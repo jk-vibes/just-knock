@@ -46,6 +46,7 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Culture",
     interests: ["Spiritual", "Peace", "Community"],
     completed: true,
+    completedAt: Date.now() - 5000000,
     createdAt: Date.now() - 97000000
   },
   {
@@ -80,6 +81,7 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Travel",
     interests: ["Architecture", "Views", "Iconic"],
     completed: true,
+    completedAt: Date.now() - 15000000,
     createdAt: Date.now() - 49000000
   },
   {
@@ -172,6 +174,11 @@ const generateItem = (index: number): BucketItem => {
   const city = CITIES[Math.floor(Math.random() * CITIES.length)];
   const activity = ACTIVITIES[Math.floor(Math.random() * ACTIVITIES.length)];
   
+  const isCompleted = Math.random() > 0.8; // 20% chance of being completed
+  const now = Date.now();
+  // Random completion date within last 2 years (approx 6e10 ms)
+  const completedAt = isCompleted ? now - Math.floor(Math.random() * 6e10) : undefined;
+
   return {
     id: `gen-${index}`,
     title: `${activity.verb} ${city.name} ${activity.noun}`,
@@ -183,8 +190,9 @@ const generateItem = (index: number): BucketItem => {
     },
     category: activity.cat,
     interests: [...activity.tags, city.country],
-    completed: Math.random() > 0.8, // 20% chance of being completed
-    createdAt: Date.now() - Math.floor(Math.random() * 1000000000)
+    completed: isCompleted,
+    completedAt: completedAt,
+    createdAt: now - Math.floor(Math.random() * 1000000000)
   };
 };
 

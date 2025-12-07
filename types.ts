@@ -10,6 +10,7 @@ export interface BucketItem {
   locationName?: string;
   coordinates?: Coordinates;
   completed: boolean;
+  completedAt?: number; // Timestamp when completed
   createdAt: number;
   category?: string;
   interests?: string[];
