@@ -1,0 +1,7 @@
+{
+  "name": "Just Knock",
+  "description": "A location-aware bucket list app that reminds you to fulfill your dreams when you're nearby.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
