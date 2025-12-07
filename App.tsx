@@ -302,6 +302,7 @@ export default function App() {
   }
 
   const incompleteCount = items.filter(i => !i.completed).length;
+  const completedCount = items.length - incompleteCount;
 
   const filteredItems = items.filter(item => {
     if (filterStatus === 'pending') return !item.completed;
@@ -416,7 +417,19 @@ export default function App() {
             {activeTab === 'list' && (
                 <div className="flex justify-end px-1 -mt-1">
                     <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                        <span className="font-bold text-red-600 dark:text-red-500 text-sm">{incompleteCount}</span> more to knock it out
+                        {filterStatus === 'completed' ? (
+                             <>
+                                <span className="font-bold text-red-600 dark:text-red-500 text-sm">{completedCount}</span> knocked out
+                             </>
+                        ) : filterStatus === 'pending' ? (
+                             <>
+                                <span className="font-bold text-red-600 dark:text-red-500 text-sm">{incompleteCount}</span> to be knocked out
+                             </>
+                        ) : (
+                             <>
+                                <span className="font-bold text-red-600 dark:text-red-500 text-sm">{incompleteCount}</span> more to knock it out
+                             </>
+                        )}
                     </p>
                 </div>
             )}
