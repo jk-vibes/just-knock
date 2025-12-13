@@ -271,11 +271,7 @@ export default function App() {
             if (item.id === id) {
                 const isCompleting = !item.completed;
                 triggerHaptic(isCompleting ? 'success' : 'medium');
-                return { 
-                    ...item, 
-                    completed: isCompleting,
-                    completedAt: isCompleting ? Date.now() : undefined 
-                };
+                return { ...item, completed: !item.completed };
             }
             return item;
         });
@@ -284,11 +280,8 @@ export default function App() {
   };
 
   const handleDelete = (id: string) => {
-    // Add confirmation before deletion
-    if (window.confirm("Are you sure you want to delete this dream from your list? This cannot be undone.")) {
-        triggerHaptic('warning');
-        setItems(prev => prev.filter(item => item.id !== id));
-    }
+    triggerHaptic('warning');
+    setItems(prev => prev.filter(item => item.id !== id));
   };
 
   const handleRestoreData = (restoredItems: BucketItem[]) => {
@@ -324,10 +317,6 @@ export default function App() {
   const incompleteCount = items.filter(i => !i.completed).length;
   const completedCount = items.length - incompleteCount;
   const completionPercentage = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
-  
-  // Statistics Logic
-  const currentYear = new Date().getFullYear();
-  const ytdCompleted = items.filter(i => i.completed && i.completedAt && new Date(i.completedAt).getFullYear() === currentYear).length;
 
   const filteredItems = items.filter(item => {
     if (filterStatus === 'pending') return !item.completed;
@@ -465,31 +454,14 @@ export default function App() {
                 </div>
             )}
             
-            {/* Statistics Dashboard (Replaces Simple Progress Bar) */}
+            {/* Progress Bar */}
              {activeTab === 'list' && items.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-3 mb-4 mt-2 shadow-sm border border-gray-100 dark:border-gray-700 mx-0.5">
-                    <div className="flex justify-between items-end mb-2">
-                        <div>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-0.5">Overall</p>
-                            <p className="text-xl font-black text-gray-800 dark:text-white leading-none">{completionPercentage}%</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-0.5">YTD Knockouts</p>
-                            <p className="text-xl font-black text-red-600 dark:text-red-500 leading-none">{ytdCompleted}</p>
-                        </div>
-                    </div>
-                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div className="px-1 mb-4 mt-1">
+                    <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div 
-                            className="h-full bg-gradient-to-r from-orange-500 to-red-600 transition-all duration-700 ease-out"
+                            className="h-full bg-red-600 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(220,38,38,0.5)]"
                             style={{ width: `${completionPercentage}%` }}
                         />
-                    </div>
-                    <div className="mt-2 text-center">
-                         <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium italic">
-                             {ytdCompleted > 0 
-                                ? `${ytdCompleted} dream${ytdCompleted !== 1 ? 's' : ''} came true this year! Keep pushing!` 
-                                : `Start your ${currentYear} streak today!`}
-                         </p>
                     </div>
                 </div>
             )}

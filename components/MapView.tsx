@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as L from 'leaflet';
 import { BucketItem, Coordinates } from '../types';
-import { Navigation } from 'lucide-react';
 
 interface MapViewProps {
   items: BucketItem[];
@@ -11,6 +10,25 @@ interface MapViewProps {
 export const MapView: React.FC<MapViewProps> = ({ items, userLocation }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+
+  // Handle resize/orientation changes to ensure map renders correctly
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Slight delay to allow layout to settle
+    const timer = setTimeout(handleResize, 300);
+
+    return () => {
+        window.removeEventListener('resize', handleResize);
+        clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -31,7 +49,7 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation }) => {
 
     const map = mapInstanceRef.current;
 
-    // Clear existing markers (basic approach for this demo)
+    // Clear existing markers
     map.eachLayer((layer) => {
       if (layer instanceof L.Marker) {
         map.removeLayer(layer);
@@ -84,14 +102,17 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation }) => {
         const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
 
         const popupContent = `
-          <div style="font-family: 'Inter', sans-serif; min-width: 200px;">
-            <h3 style="font-weight: 700; margin-bottom: 4px; color: #1f2937;">${item.title}</h3>
-            <p style="font-size: 12px; color: #4b5563; margin-bottom: 8px;">
+          <div style="font-family: 'Inter', sans-serif; min-width: 220px; padding: 4px;">
+            <h3 style="font-weight: 700; margin: 0 0 4px 0; color: #1f2937; font-size: 14px; line-height: 1.2;">${item.title}</h3>
+            <p style="font-size: 11px; color: #9ca3af; margin: 0 0 8px 0; font-weight: 500; text-transform: uppercase; letter-spacing: 0.025em;">
               ${item.locationName || 'Location'}
-              ${item.completed ? '<span style="color: #22c55e; font-weight: 600; margin-left: 6px;">(Completed)</span>' : ''}
+              ${item.completed ? '<span style="color: #22c55e; margin-left: 6px;">● Completed</span>' : ''}
             </p>
-            <a href="${navUrl}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background-color: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500;">
-              Navigate
+            <p style="font-size: 12px; color: #4b5563; margin: 0 0 12px 0; line-height: 1.4;">
+              ${item.description}
+            </p>
+            <a href="${navUrl}" target="_blank" style="display: block; width: 100%; text-align: center; background-color: #ef4444; color: white; padding: 8px 0; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background-color 0.2s;">
+              Navigate to Location
             </a>
           </div>
         `;
@@ -105,11 +126,14 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation }) => {
     if (items.length > 0 || userLocation) {
         map.fitBounds(bounds, { padding: [50, 50] });
     }
+    
+    // Invalidate size immediately to ensure correct rendering on load
+    map.invalidateSize();
 
   }, [items, userLocation]);
 
   return (
-    <div className="h-[calc(100vh-250px)] w-full rounded-2xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700 relative z-0">
+    <div className="h-[calc(100vh-180px)] min-h-[350px] w-full rounded-2xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700 relative z-0">
       <div ref={mapContainerRef} className="w-full h-full" />
     </div>
   );
