@@ -1,3 +1,4 @@
+
 import { Coordinates } from '../types';
 
 // Calculate distance between two points in meters using Haversine formula
@@ -38,11 +39,32 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   return false;
 };
 
-export const sendNotification = (title: string, body: string) => {
+export const sendNotification = async (title: string, body: string, tag: string = 'jk-proximity') => {
   if (Notification.permission === "granted") {
+    // Try to use Service Worker registration for "System" style notifications on Android
+    if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        if(registration) {
+            try {
+                await registration.showNotification(title, {
+                    body,
+                    icon: '/icon.svg',
+                    badge: '/icon.svg',
+                    vibrate: [200, 100, 200],
+                    tag: tag
+                } as any);
+                return;
+            } catch (e) {
+                console.warn("SW Notification failed, falling back", e);
+            }
+        }
+    }
+
+    // Fallback for desktop or if SW fails
     new Notification(title, {
       body,
-      icon: 'https://cdn-icons-png.flaticon.com/512/2906/2906274.png', // Generic location icon
+      icon: '/icon.svg',
+      tag: tag
     });
   }
 };

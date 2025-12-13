@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
@@ -165,9 +166,11 @@ export default function App() {
         const dist = calculateDistance(currentLocation, item.coordinates);
         
         if (dist < PROXIMITY_THRESHOLD) {
+          // Enhanced notification with title and description
           sendNotification(
-            `You are close to a dream!`, 
-            `You are within ${formatDistance(dist)} of: ${item.title}`
+            `Nearby: ${item.title}`, 
+            `${item.description}\nDistance: ${formatDistance(dist)}`,
+            `jk-item-${item.id}`
           );
           notifiedItems.current.add(item.id);
         }
