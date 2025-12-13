@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2 } from 'lucide-react';
 import { Theme } from '../types';
@@ -20,6 +21,8 @@ interface SettingsModalProps {
   // Props for Backup (passed from App generally, but we can read local storage here for simplicity in backup)
   items?: BucketItem[];
   onRestore?: (items: BucketItem[]) => void;
+  proximityRange: number;
+  onProximityRangeChange: (range: number) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -36,7 +39,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRemoveInterest,
   onLogout,
   items = [],
-  onRestore
+  onRestore,
+  proximityRange,
+  onProximityRangeChange
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'categories' | 'interests' | 'backup'>('general');
   const [newItemInput, setNewItemInput] = useState('');
@@ -150,6 +155,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   ))}
                 </div>
               </div>
+
+               {/* Radar Settings */}
+               <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Radar Settings</h3>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Proximity Range</label>
+                            <span className="text-sm font-bold text-red-600 dark:text-red-400">{(proximityRange / 1000).toFixed(1)} km</span>
+                        </div>
+                        <input
+                            type="range"
+                            min="1000"
+                            max="50000"
+                            step="500"
+                            value={proximityRange}
+                            onChange={(e) => onProximityRangeChange(parseInt(e.target.value))}
+                            className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-red-600"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                            Notify me when I am within this distance of a bucket list item.
+                        </p>
+                    </div>
+                </div>
 
               {/* Data */}
               <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-700">

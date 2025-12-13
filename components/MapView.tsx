@@ -1,13 +1,16 @@
+
 import React, { useEffect, useRef } from 'react';
 import * as L from 'leaflet';
 import { BucketItem, Coordinates } from '../types';
+import { calculateDistance } from '../utils/geo';
 
 interface MapViewProps {
   items: BucketItem[];
   userLocation: Coordinates | null;
+  proximityRange: number;
 }
 
-export const MapView: React.FC<MapViewProps> = ({ items, userLocation }) => {
+export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximityRange }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
@@ -55,22 +58,6 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation }) => {
         map.removeLayer(layer);
       }
     });
-
-    // Red Icon (Incomplete)
-    const redIcon = L.divIcon({
-      className: 'custom-div-icon',
-      html: `<div style="background-color: #ef4444; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
-
-    // Green Icon (Completed)
-    const greenIcon = L.divIcon({
-      className: 'custom-div-icon',
-      html: `<div style="background-color: #22c55e; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
     
     // User Location Icon (Blue Dot)
     const userIcon = L.divIcon({
@@ -94,8 +81,39 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation }) => {
     items.forEach(item => {
       if (item.coordinates) {
         const { latitude, longitude } = item.coordinates;
-        // Choose icon based on completion status
-        const icon = item.completed ? greenIcon : redIcon;
+        
+        let isNearby = false;
+        // Check proximity if user location is available and item is not completed
+        if (userLocation && !item.completed) {
+            const dist = calculateDistance(userLocation, item.coordinates);
+            if (dist < proximityRange) { 
+                isNearby = true;
+            }
+        }
+
+        const color = item.completed ? '#22c55e' : '#ef4444';
+        const baseStyle = `background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);`;
+        
+        let iconHtml;
+        if (isNearby) {
+            // Add ping animation for nearby items
+            iconHtml = `
+              <div class="relative flex items-center justify-center w-full h-full">
+                <span class="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping"></span>
+                <div style="${baseStyle} position: relative; z-index: 10;"></div>
+              </div>
+            `;
+        } else {
+            iconHtml = `<div style="${baseStyle}"></div>`;
+        }
+
+        const icon = L.divIcon({
+          className: 'custom-div-icon bg-transparent border-none', // Ensure container doesn't block styles
+          html: iconHtml,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
         const marker = L.marker([latitude, longitude], { icon }).addTo(map);
         
         // Navigation URL
@@ -107,6 +125,7 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation }) => {
             <p style="font-size: 11px; color: #9ca3af; margin: 0 0 8px 0; font-weight: 500; text-transform: uppercase; letter-spacing: 0.025em;">
               ${item.locationName || 'Location'}
               ${item.completed ? '<span style="color: #22c55e; margin-left: 6px;">● Completed</span>' : ''}
+              ${isNearby ? '<span style="color: #ef4444; margin-left: 6px;">● Nearby!</span>' : ''}
             </p>
             <p style="font-size: 12px; color: #4b5563; margin: 0 0 12px 0; line-height: 1.4;">
               ${item.description}
@@ -130,7 +149,7 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation }) => {
     // Invalidate size immediately to ensure correct rendering on load
     map.invalidateSize();
 
-  }, [items, userLocation]);
+  }, [items, userLocation, proximityRange]);
 
   return (
     <div className="h-[calc(100vh-180px)] min-h-[350px] w-full rounded-2xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700 relative z-0">

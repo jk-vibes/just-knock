@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { MapPin, Navigation, CheckCircle2, Circle, Trash2, ExternalLink, Pencil } from 'lucide-react';
 import { BucketItem, Coordinates } from '../types';
@@ -10,6 +11,7 @@ interface BucketListCardProps {
   onDelete: (id: string) => void;
   onEdit: (item: BucketItem) => void;
   isCompact?: boolean;
+  proximityRange?: number;
 }
 
 export const BucketListCard: React.FC<BucketListCardProps> = ({ 
@@ -18,13 +20,14 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
   onToggleComplete, 
   onDelete, 
   onEdit,
-  isCompact = false 
+  isCompact = false,
+  proximityRange = 10000 // Default to 10km if not provided
 }) => {
   const distance = (item.coordinates && userLocation)
     ? calculateDistance(userLocation, item.coordinates)
     : null;
 
-  const isNearby = distance !== null && distance < 5000; // Highlight if within 5km
+  const isNearby = distance !== null && distance < proximityRange;
 
   const handleNavigate = () => {
     if (item.coordinates) {

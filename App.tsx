@@ -16,12 +16,12 @@ const THEME_KEY = 'jk_theme';
 const USER_KEY = 'jk_user';
 const CAT_KEY = 'jk_categories';
 const INT_KEY = 'jk_interests';
-
-const PROXIMITY_THRESHOLD = 2000; // meters (2km)
+const PROX_KEY = 'jk_proximity';
 
 // Default Data
 const DEFAULT_CATEGORIES = ['Adventure', 'Travel', 'Food', 'Culture', 'Nature', 'Luxury', 'Personal Growth'];
 const DEFAULT_INTERESTS = ['Hiking', 'Photography', 'History', 'Art', 'Beach', 'Mountains', 'Wildlife', 'Music'];
+const DEFAULT_PROXIMITY = 10000; // 10km in meters
 
 // Custom Bucket Logo Component - JK Design with Text
 const BucketLogo = () => (
@@ -50,6 +50,10 @@ export default function App() {
   const [interests, setInterests] = useState<string[]>(() => {
     const saved = localStorage.getItem(INT_KEY);
     return saved ? JSON.parse(saved) : DEFAULT_INTERESTS;
+  });
+  const [proximityRange, setProximityRange] = useState<number>(() => {
+    const saved = localStorage.getItem(PROX_KEY);
+    return saved ? parseInt(saved, 10) : DEFAULT_PROXIMITY;
   });
 
   // App State
@@ -100,6 +104,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(INT_KEY, JSON.stringify(interests));
   }, [interests]);
+
+  useEffect(() => {
+    localStorage.setItem(PROX_KEY, proximityRange.toString());
+  }, [proximityRange]);
 
   // Apply Theme
   useEffect(() => {
@@ -165,7 +173,7 @@ export default function App() {
       if (!item.completed && item.coordinates && !notifiedItems.current.has(item.id)) {
         const dist = calculateDistance(currentLocation, item.coordinates);
         
-        if (dist < PROXIMITY_THRESHOLD) {
+        if (dist < proximityRange) {
           // Enhanced notification with title and description
           sendNotification(
             `Nearby: ${item.title}`, 
@@ -176,7 +184,7 @@ export default function App() {
         }
       }
     });
-  }, [items]);
+  }, [items, proximityRange]);
 
   // Geolocation Watcher
   useEffect(() => {
@@ -310,6 +318,8 @@ export default function App() {
                     onAddCategory={()=>{}} onRemoveCategory={()=>{}}
                     onAddInterest={()=>{}} onRemoveInterest={()=>{}}
                     onLogout={() => {}}
+                    proximityRange={proximityRange}
+                    onProximityRangeChange={setProximityRange}
                 />
             </div>
             <LoginScreen onLogin={(u) => { triggerHaptic('success'); setUser(u); }} />
@@ -492,12 +502,13 @@ export default function App() {
                     onToggleComplete={handleToggleComplete}
                     onDelete={handleDelete}
                     onEdit={handleEditClick}
+                    proximityRange={proximityRange}
                     />
                 ))
                 )}
             </div>
             ) : (
-            <MapView items={items} userLocation={userLocation} />
+            <MapView items={items} userLocation={userLocation} proximityRange={proximityRange} />
             )}
 
             {/* Footer Tagline (Inside Scroll View) */}
@@ -559,6 +570,8 @@ export default function App() {
         onLogout={() => setUser(null)}
         items={items}
         onRestore={handleRestoreData}
+        proximityRange={proximityRange}
+        onProximityRangeChange={setProximityRange}
       />
     </div>
   );
