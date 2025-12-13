@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { User } from '../types';
 
@@ -20,12 +21,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     setIsLoading(true);
     // Simulate network delay
     setTimeout(() => {
-        // Mock User Data
+        // Mock User Data without a hardcoded fake photo, allowing App.tsx to show initials
         const mockUser: User = {
             id: 'u_12345',
             name: 'Jay Wanderer',
             email: 'jay@example.com',
-            photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80'
+            photoUrl: '' // Left empty to simulate no photo provided, triggering fallback UI
         };
         onLogin(mockUser);
         setIsLoading(false);

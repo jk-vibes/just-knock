@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { BucketItemDraft } from "../types";
 
@@ -86,15 +87,23 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
   }
 };
 
-export const suggestBucketItem = async (availableCategories: string[]): Promise<BucketItemDraft> => {
+export const suggestBucketItem = async (availableCategories: string[], context?: string): Promise<BucketItemDraft> => {
     try {
       const categoriesString = availableCategories.join(", ");
       
+      let prompt = `Generate ONE unique, exciting, and specific bucket list item that a travel enthusiast should experience. 
+        It should be a specific place or activity in a specific location.
+        Classify it into one of: [${categoriesString}].`;
+
+      if (context && context.trim().length > 0) {
+        prompt += `\nThe user is interested in: "${context}". Please generate the suggestion specifically related to this topic, place, or activity.`;
+      } else {
+        prompt += `\nSurprise the user with something amazing.`;
+      }
+      
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Generate ONE unique, exciting, and specific bucket list item that a travel enthusiast should experience. 
-        It should be a specific place or activity in a specific location.
-        Classify it into one of: [${categoriesString}].`,
+        contents: prompt,
         config: {
           responseMimeType: "application/json",
           responseSchema: bucketItemSchema,

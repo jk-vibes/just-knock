@@ -1,3 +1,4 @@
+
 export interface Coordinates {
   latitude: number;
   longitude: number;
@@ -13,6 +14,7 @@ export interface BucketItem {
   createdAt: number;
   category?: string;
   interests?: string[];
+  owner?: string;
 }
 
 export interface BucketItemDraft {
@@ -23,6 +25,7 @@ export interface BucketItemDraft {
   longitude?: number;
   category?: string;
   interests?: string[];
+  owner?: string;
 }
 
 export enum AppView {
@@ -31,7 +34,7 @@ export enum AppView {
   MAP = 'MAP'
 }
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark' | 'system' | 'spiderman' | 'batman' | 'elsa';
 
 export interface User {
   id: string;

@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List } from 'lucide-react';
+import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
 import { LoginScreen } from './components/LoginScreen';
 import { MapView } from './components/MapView';
+import { ChangelogModal } from './components/ChangelogModal';
 import { BucketItem, BucketItemDraft, Coordinates, Theme, User } from './types';
-import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance } from './utils/geo';
+import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance, speak, getDistanceSpeech } from './utils/geo';
 import { MOCK_BUCKET_ITEMS, generateMockItems } from './utils/mockData';
 import { triggerHaptic } from './utils/haptics';
 
@@ -17,21 +18,30 @@ const USER_KEY = 'jk_user';
 const CAT_KEY = 'jk_categories';
 const INT_KEY = 'jk_interests';
 const PROX_KEY = 'jk_proximity';
+const FAM_KEY = 'jk_family_members';
 
 // Default Data
 const DEFAULT_CATEGORIES = ['Adventure', 'Travel', 'Food', 'Culture', 'Nature', 'Luxury', 'Personal Growth'];
 const DEFAULT_INTERESTS = ['Hiking', 'Photography', 'History', 'Art', 'Beach', 'Mountains', 'Wildlife', 'Music'];
-const DEFAULT_PROXIMITY = 10000; // 10km in meters
+const DEFAULT_PROXIMITY = 2000; // 2km in meters
 
 // Custom Bucket Logo Component - JK Design with Text
-const BucketLogo = () => (
-    <div className="flex flex-col items-center justify-center">
-        <svg width="40" height="40" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 filter drop-shadow-sm transition-transform hover:scale-110 duration-300">
-            <path d="M56 160c0-100 400-100 400 0" stroke="#ef4444" strokeWidth="40" strokeLinecap="round" fill="none"></path>
-            <path d="M56 160l40 320h320l40-320Z" fill="#ef4444"></path>
-            <text x="256" y="380" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize="160" fill="#ffffff" textAnchor="middle">JK</text>
-        </svg>
-        <span className="text-[9px] font-bold text-red-600 dark:text-red-500 tracking-widest leading-none mt-0.5">just knock it</span>
+const BucketLogo = ({ onClickVersion }: { onClickVersion: () => void }) => (
+    <div className="flex flex-col items-start justify-center">
+        <div className="flex items-center gap-2">
+            <svg width="40" height="40" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 filter drop-shadow-sm transition-transform hover:scale-110 duration-300">
+                <path d="M56 160c0-100 400-100 400 0" stroke="#ef4444" strokeWidth="40" strokeLinecap="round" fill="none"></path>
+                <path d="M56 160l40 320h320l40-320Z" fill="#ef4444"></path>
+                <text x="256" y="380" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize="160" fill="#ffffff" textAnchor="middle">JK</text>
+            </svg>
+            <button 
+                onClick={(e) => { e.stopPropagation(); onClickVersion(); }}
+                className="text-[8px] font-bold text-gray-400 hover:text-red-500 cursor-pointer bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm"
+            >
+                v1.0
+            </button>
+        </div>
+        <span className="text-[9px] font-bold text-red-600 dark:text-red-500 tracking-widest leading-none mt-0.5 ml-0.5">just knock it</span>
     </div>
 );
 
@@ -55,6 +65,10 @@ export default function App() {
     const saved = localStorage.getItem(PROX_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_PROXIMITY;
   });
+  const [familyMembers, setFamilyMembers] = useState<string[]>(() => {
+    const saved = localStorage.getItem(FAM_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
 
   // App State
   const [items, setItems] = useState<BucketItem[]>(() => {
@@ -71,6 +85,7 @@ export default function App() {
   const [isRadarOn, setIsRadarOn] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'list' | 'map'>('list');
   const [locating, setLocating] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
@@ -79,6 +94,7 @@ export default function App() {
 
   // Filter & View State
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
+  const [filterOwner, setFilterOwner] = useState<string | null>(null); // null = All
   const [isCompact, setIsCompact] = useState(false);
 
   // Edit State
@@ -109,14 +125,28 @@ export default function App() {
     localStorage.setItem(PROX_KEY, proximityRange.toString());
   }, [proximityRange]);
 
+  useEffect(() => {
+    localStorage.setItem(FAM_KEY, JSON.stringify(familyMembers));
+  }, [familyMembers]);
+
   // Apply Theme
   useEffect(() => {
     const root = window.document.documentElement;
+    
+    // Clear previous theme attributes
+    root.removeAttribute('data-theme');
+    
     const applyTheme = (t: Theme) => {
-      if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      // Handle standard dark/light classes
+      if (t === 'dark' || t === 'batman' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         root.classList.add('dark');
       } else {
         root.classList.remove('dark');
+      }
+
+      // Handle Special Character Themes via data-attribute
+      if (['spiderman', 'batman', 'elsa'].includes(t)) {
+          root.setAttribute('data-theme', t);
       }
     };
     
@@ -174,12 +204,18 @@ export default function App() {
         const dist = calculateDistance(currentLocation, item.coordinates);
         
         if (dist < proximityRange) {
-          // Enhanced notification with title and description
+          // Visual Notification
           sendNotification(
             `Nearby: ${item.title}`, 
             `${item.description}\nDistance: ${formatDistance(dist)}`,
             `jk-item-${item.id}`
           );
+          
+          // Audio Notification (TTS)
+          const distSpeech = getDistanceSpeech(dist);
+          const audioText = `Knock Knock! You are nearby ${item.title}. It is ${distSpeech} away. ${item.description}`;
+          speak(audioText);
+
           notifiedItems.current.add(item.id);
         }
       }
@@ -246,7 +282,8 @@ export default function App() {
                 locationName: draft.locationName,
                 coordinates: (draft.latitude && draft.longitude) ? { latitude: draft.latitude, longitude: draft.longitude } : item.coordinates,
                 category: draft.category,
-                interests: draft.interests
+                interests: draft.interests,
+                owner: draft.owner
             } : item
         ));
         setEditingItem(null);
@@ -263,7 +300,8 @@ export default function App() {
         completed: false,
         createdAt: Date.now(),
         category: draft.category,
-        interests: draft.interests
+        interests: draft.interests,
+        owner: draft.owner
         };
         setItems(prev => [newItem, ...prev]);
     }
@@ -292,7 +330,38 @@ export default function App() {
 
   const handleDelete = (id: string) => {
     triggerHaptic('warning');
-    setItems(prev => prev.filter(item => item.id !== id));
+    if (window.confirm("Are you sure you want to delete this wish?")) {
+        setItems(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
+  const handleClearMockData = () => {
+    triggerHaptic('warning');
+    // Mock items have IDs starting with specific prefixes from mockData.ts (ind-, usa-, gen-)
+    setItems(prev => prev.filter(item => {
+        const isMock = item.id.startsWith('ind-') || item.id.startsWith('usa-') || item.id.startsWith('gen-');
+        return !isMock;
+    }));
+  };
+
+  const handleAddMockData = () => {
+      triggerHaptic('success');
+      // Get fresh mock data
+      const mockItems = generateMockItems();
+      
+      setItems(prev => {
+          // Filter out any mock items that might already exist by ID to prevent duplicates
+          const existingIds = new Set(prev.map(i => i.id));
+          const newMocks = mockItems.filter(i => !existingIds.has(i.id));
+          
+          if (newMocks.length === 0) {
+              alert("No new mock items added. You might already have them all.");
+              return prev;
+          }
+          
+          alert(`Added ${newMocks.length} mock wishes to your list!`);
+          return [...prev, ...newMocks];
+      });
   };
 
   const handleRestoreData = (restoredItems: BucketItem[]) => {
@@ -304,6 +373,14 @@ export default function App() {
       }
   };
 
+  const getUserInitials = (name: string) => {
+      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+  
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
   if (!user) {
     return (
         <>
@@ -313,10 +390,14 @@ export default function App() {
                     onClose={() => setIsSettingsOpen(false)}
                     currentTheme={theme}
                     onThemeChange={setTheme}
-                    onClearData={() => {}}
+                    onClearData={() => setItems([])} // Actually clear data here
+                    onClearMockData={handleClearMockData}
+                    onAddMockData={handleAddMockData}
                     categories={[]} interests={[]}
+                    familyMembers={[]}
                     onAddCategory={()=>{}} onRemoveCategory={()=>{}}
                     onAddInterest={()=>{}} onRemoveInterest={()=>{}}
+                    onAddFamilyMember={()=>{}} onRemoveFamilyMember={()=>{}}
                     onLogout={() => {}}
                     proximityRange={proximityRange}
                     onProximityRangeChange={setProximityRange}
@@ -332,8 +413,20 @@ export default function App() {
   const completionPercentage = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
 
   const filteredItems = items.filter(item => {
-    if (filterStatus === 'pending') return !item.completed;
-    if (filterStatus === 'completed') return item.completed;
+    if (filterStatus === 'pending' && item.completed) return false;
+    if (filterStatus === 'completed' && !item.completed) return false;
+    
+    // Owner filter
+    if (filterOwner) {
+        // If filtering by "Me", show items with owner 'Me' or items with no owner (backward compatibility/default)
+        if (filterOwner === 'Me') {
+            if (item.owner && item.owner !== 'Me') return false;
+        } else {
+            // Filter by specific family member name
+            if (item.owner !== filterOwner) return false;
+        }
+    }
+    
     return true;
   });
 
@@ -344,7 +437,7 @@ export default function App() {
         <div className="max-w-2xl mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <BucketLogo />
+              <BucketLogo onClickVersion={() => setIsChangelogOpen(true)} />
             </div>
             
             <div className="flex items-center gap-3">
@@ -373,7 +466,13 @@ export default function App() {
                 }}
                 className="p-1 pr-3 pl-1 flex items-center gap-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               >
-                <img src={user.photoUrl} alt={user.name} className="w-8 h-8 rounded-full border border-gray-200" />
+                {user.photoUrl ? (
+                    <img src={user.photoUrl} alt={user.name} className="w-8 h-8 rounded-full border border-gray-200" />
+                ) : (
+                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center text-xs font-bold border border-red-200 dark:border-red-800">
+                        {getUserInitials(user.name)}
+                    </div>
+                )}
                 <Settings className="w-4 h-4" />
               </button>
             </div>
@@ -408,7 +507,41 @@ export default function App() {
 
                 {/* List Specific Controls */}
                 {activeTab === 'list' && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                        {/* Family Filter (Only show if members exist) */}
+                        {familyMembers.length > 0 && (
+                            <div className="flex -space-x-2 mr-2 overflow-hidden bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
+                                {/* All */}
+                                <button 
+                                    onClick={() => { setFilterOwner(null); triggerHaptic('light'); }}
+                                    className={`relative z-30 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${!filterOwner ? 'bg-gray-800 text-white border-white dark:border-gray-600' : 'bg-gray-200 text-gray-500 border-white dark:border-gray-700 dark:bg-gray-700'}`}
+                                    title="All"
+                                >
+                                    <Users className="w-3.5 h-3.5" />
+                                </button>
+                                {/* Me */}
+                                <button 
+                                    onClick={() => { setFilterOwner('Me'); triggerHaptic('light'); }}
+                                    className={`relative z-20 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === 'Me' ? 'bg-red-500 text-white border-white dark:border-gray-600' : 'bg-red-100 text-red-600 border-white dark:border-gray-700 dark:bg-gray-800'}`}
+                                    title="Me"
+                                >
+                                    ME
+                                </button>
+                                {/* Members */}
+                                {familyMembers.map((member, idx) => (
+                                    <button 
+                                        key={member}
+                                        onClick={() => { setFilterOwner(member); triggerHaptic('light'); }}
+                                        className={`relative w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === member ? 'bg-purple-500 text-white border-white dark:border-gray-600' : 'bg-purple-100 text-purple-600 border-white dark:border-gray-700 dark:bg-gray-800'}`}
+                                        style={{ zIndex: 10 - idx }}
+                                        title={member}
+                                    >
+                                        {getInitials(member)}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Filters */}
                         <div className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
                             <button 
@@ -450,6 +583,7 @@ export default function App() {
             {activeTab === 'list' && (
                 <div className="flex justify-end px-1 -mt-1">
                     <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                        {filterOwner && <span className="mr-1 text-gray-500 dark:text-gray-400 font-bold">[{filterOwner === 'Me' ? 'My' : filterOwner + "'s"}]</span>}
                         {filterStatus === 'completed' ? (
                              <>
                                 <span className="font-bold text-red-600 dark:text-red-500 text-sm">{completedCount}</span> knocked out
@@ -542,6 +676,7 @@ export default function App() {
         onAdd={handleAddItem}
         categories={categories}
         availableInterests={interests}
+        familyMembers={familyMembers}
         initialData={editingItem ? {
             title: editingItem.title,
             description: editingItem.description,
@@ -549,7 +684,8 @@ export default function App() {
             latitude: editingItem.coordinates?.latitude,
             longitude: editingItem.coordinates?.longitude,
             category: editingItem.category,
-            interests: editingItem.interests
+            interests: editingItem.interests,
+            owner: editingItem.owner
         } : null}
         mode={editingItem ? 'edit' : 'add'}
       />
@@ -561,18 +697,26 @@ export default function App() {
         currentTheme={theme}
         onThemeChange={setTheme}
         onClearData={() => setItems([])}
+        onClearMockData={handleClearMockData}
+        onAddMockData={handleAddMockData}
         categories={categories}
         interests={interests}
+        familyMembers={familyMembers}
         onAddCategory={(cat) => setCategories(p => [...p, cat])}
         onRemoveCategory={(cat) => setCategories(p => p.filter(c => c !== cat))}
         onAddInterest={(int) => setInterests(p => [...p, int])}
         onRemoveInterest={(int) => setInterests(p => p.filter(i => i !== int))}
+        onAddFamilyMember={(name) => setFamilyMembers(p => [...p, name])}
+        onRemoveFamilyMember={(name) => setFamilyMembers(p => p.filter(n => n !== name))}
         onLogout={() => setUser(null)}
         items={items}
         onRestore={handleRestoreData}
         proximityRange={proximityRange}
         onProximityRangeChange={setProximityRange}
       />
+      
+      {/* Changelog Modal */}
+      <ChangelogModal isOpen={isChangelogOpen} onClose={() => setIsChangelogOpen(false)} />
     </div>
   );
 }

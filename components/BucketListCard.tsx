@@ -35,6 +35,10 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
       window.open(url, '_blank');
     }
   };
+  
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
 
   return (
     <div className={`relative group bg-white dark:bg-gray-800 rounded-2xl shadow-sm border transition-all duration-300 ${isCompact ? 'p-2' : 'p-3.5'} ${isNearby ? 'border-orange-400 ring-1 ring-orange-100 dark:ring-orange-900/30' : 'border-gray-100 dark:border-gray-700 hover:shadow-md'}`}>
@@ -60,6 +64,12 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                     >
                     {item.title}
                     </h3>
+                    {/* Owner Initials Badge */}
+                    {item.owner && item.owner !== 'Me' && (
+                        <span className="text-[9px] font-bold text-white bg-purple-500 px-1.5 py-0.5 rounded-full whitespace-nowrap" title={`Wish belongs to ${item.owner}`}>
+                            {getInitials(item.owner)}
+                        </span>
+                    )}
                     {item.category && !isCompact && (
                          <span className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md whitespace-nowrap">
                             {item.category}

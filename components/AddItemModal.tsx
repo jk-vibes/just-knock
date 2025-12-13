@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb } from 'lucide-react';
+import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem } from '../services/geminiService';
 import { BucketItemDraft } from '../types';
 
@@ -9,6 +10,7 @@ interface AddItemModalProps {
   onAdd: (item: BucketItemDraft) => void;
   categories: string[];
   availableInterests: string[];
+  familyMembers?: string[];
   initialData?: BucketItemDraft | null;
   mode?: 'add' | 'edit';
 }
@@ -19,6 +21,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   onAdd,
   categories,
   availableInterests,
+  familyMembers = [],
   initialData,
   mode = 'add'
 }) => {
@@ -30,6 +33,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   // Draft editing state
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [selectedOwner, setSelectedOwner] = useState<string>('Me');
 
   // Initialize state when initialData changes or mode switches
   useEffect(() => {
@@ -37,6 +41,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         setDraft(initialData);
         setSelectedCategory(initialData.category || 'Other');
         setSelectedInterests(initialData.interests || []);
+        setSelectedOwner(initialData.owner || 'Me');
         setInput(initialData.title); // Pre-fill input for reference
     } else if (isOpen && mode === 'add') {
         // Reset for add mode
@@ -44,6 +49,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         setInput('');
         setSelectedCategory('');
         setSelectedInterests([]);
+        setSelectedOwner('Me');
     }
   }, [isOpen, initialData, mode]);
 
@@ -68,7 +74,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleSuggest = async () => {
     setIsSuggesting(true);
-    const result = await suggestBucketItem(categories);
+    // Pass the current input as context to the suggestion engine
+    const result = await suggestBucketItem(categories, input);
     setDraft(result);
     setInput(result.title);
     setIsSuggesting(false);
@@ -79,7 +86,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       onAdd({
         ...draft,
         category: selectedCategory,
-        interests: selectedInterests
+        interests: selectedInterests,
+        owner: selectedOwner
       });
       // Don't reset here immediately, let the parent close handler do it or useEffect
       onClose();
@@ -106,7 +114,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
         <div className="p-5 overflow-y-auto no-scrollbar">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            {mode === 'edit' ? 'Edit Dream' : 'New Adventure'}
+            {mode === 'edit' ? 'Edit Dream' : 'New Wish'}
           </h2>
           
           {mode === 'add' && !draft && (
@@ -143,7 +151,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                         onClick={handleSuggest}
                         disabled={isSuggesting || isAnalyzing}
                         className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-xl font-medium border border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all flex items-center gap-2 whitespace-nowrap"
-                        title="Get an AI Suggestion"
+                        title={input.trim().length > 0 ? "Get a suggestion based on your text" : "Get a random suggestion"}
                     >
                          {isSuggesting ? (
                              <Loader2 className="w-5 h-5 animate-spin" />
@@ -204,6 +212,25 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
               {/* Categorization Controls */}
               <div className="space-y-3 pt-1">
+                {/* Family Selection - Only show if family members exist */}
+                {familyMembers.length > 0 && (
+                    <div>
+                        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block flex items-center gap-2">
+                            <Users className="w-3 h-3" /> Whose wish is this?
+                        </label>
+                        <select 
+                            value={selectedOwner}
+                            onChange={(e) => setSelectedOwner(e.target.value)}
+                            className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-800 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
+                        >
+                            <option value="Me">Me</option>
+                            {familyMembers.map(member => (
+                                <option key={member} value={member}>{member}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
                 <div>
                   <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block flex items-center gap-2">
                     <List className="w-3 h-3" /> Category

@@ -24,6 +24,39 @@ export const formatDistance = (meters: number): string => {
   return `${(meters / 1000).toFixed(1)}km`;
 };
 
+// Format distance for Text-to-Speech (full words)
+export const getDistanceSpeech = (meters: number): string => {
+  if (meters < 1000) {
+    return `${Math.round(meters)} meters`;
+  }
+  return `${(meters / 1000).toFixed(1)} kilometers`;
+};
+
+// Text-to-Speech function
+export const speak = (text: string) => {
+  if (!('speechSynthesis' in window)) return;
+  
+  // Cancel any ongoing speech to avoid queue buildup/overlapping
+  window.speechSynthesis.cancel();
+  
+  const utterance = new SpeechSynthesisUtterance(text);
+  
+  // Attempt to set a natural voice if available
+  const voices = window.speechSynthesis.getVoices();
+  const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || 
+                        voices.find(v => v.lang.startsWith('en'));
+  
+  if (preferredVoice) {
+    utterance.voice = preferredVoice;
+  }
+  
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
+
+  window.speechSynthesis.speak(utterance);
+};
+
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!("Notification" in window)) {
     console.log("This browser does not support desktop notification");
