@@ -1,14 +1,16 @@
 
 import React from 'react';
 import { BucketItem } from '../types';
-import { Plane, Mountain, Utensils, Palette, Camera, Landmark, Music, Star, Briefcase, Heart, Globe, Footprints } from 'lucide-react';
+import { Plane, Mountain, Utensils, Palette, Camera, Landmark, Music, Star, Briefcase, Heart, Globe, Footprints, Plus } from 'lucide-react';
 
 interface TimelineViewProps {
   items: BucketItem[];
   onEdit: (item: BucketItem) => void;
+  pendingCount: number;
+  onViewPending: () => void;
 }
 
-export const TimelineView: React.FC<TimelineViewProps> = ({ items, onEdit }) => {
+export const TimelineView: React.FC<TimelineViewProps> = ({ items, onEdit, pendingCount, onViewPending }) => {
   // Sort items: Oldest completed first (Chronological)
   const sortedItems = [...items].sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
 
@@ -43,12 +45,21 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ items, onEdit }) => 
   // Global index to ensure perfect alternation across years
   let globalIndex = 0;
 
-  if (items.length === 0) return null;
+  // Even if no completed items, we might want to show the pending node
+  // But usually this view is for 'completed' filter.
 
   return (
-    <div className="relative py-4 px-2 max-w-2xl mx-auto w-full">
+    <div className="relative py-4 px-2 max-w-2xl mx-auto w-full pb-20">
       {/* Central Line */}
-      <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gray-200 dark:bg-gray-700 -translate-x-1/2 rounded-full" />
+      <div className="absolute left-1/2 top-0 bottom-10 w-1 bg-gray-200 dark:bg-gray-700 -translate-x-1/2 rounded-full" />
+
+      {items.length === 0 && (
+          <div className="relative z-10 flex justify-center mb-10">
+               <span className="px-4 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 text-xs font-medium border border-gray-200 dark:border-gray-700">
+                  No completed journeys yet
+               </span>
+          </div>
+      )}
 
       {years.map((year) => (
         <div key={year} className="relative z-10 mb-8">
@@ -103,12 +114,31 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ items, onEdit }) => 
         </div>
       ))}
       
-      {/* Footer Pill */}
-       <div className="flex justify-center mt-6 relative z-10">
-            <div className="px-8 py-2 rounded-full bg-slate-500 text-white font-bold text-sm shadow-md uppercase tracking-widest ring-4 ring-gray-50 dark:ring-gray-900">
-              Journey So Far
-            </div>
-       </div>
+      {/* Future / Pending Node */}
+      <div className="relative z-10 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex flex-col items-center">
+            {/* Dashed Line Connection */}
+            <div className="h-12 w-0.5 border-l-4 border-dotted border-gray-300 dark:border-gray-600 mb-2"></div>
+
+            {/* The Node */}
+            <button
+                onClick={onViewPending}
+                className="group relative flex items-center gap-4 bg-white dark:bg-gray-800 p-2 pr-6 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-red-500 dark:hover:border-red-500 transition-all shadow-sm hover:shadow-md hover:scale-105"
+            >
+                <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600 group-hover:bg-red-50 dark:group-hover:bg-red-900/20 group-hover:border-red-200 transition-colors">
+                    <Plus className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors" />
+                </div>
+                <div className="text-left">
+                    <span className="block text-xl font-black text-gray-400 dark:text-gray-500 group-hover:text-red-600 dark:group-hover:text-red-400 leading-none">
+                        {pendingCount}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 group-hover:text-red-500/70 tracking-widest">
+                        Dreams to Go
+                    </span>
+                </div>
+            </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -116,13 +146,14 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ items, onEdit }) => 
 const TimelineContent = ({ item, onClick, align }: { item: BucketItem, onClick: () => void, align: 'left' | 'right' }) => (
     <div 
         onClick={onClick}
-        className={`cursor-pointer transition-all duration-200 p-2 -m-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 ${align === 'right' ? 'items-end' : 'items-start'}`}
+        className={`cursor-pointer transition-all duration-200 p-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-red-200 dark:hover:border-red-900/50 hover:-translate-y-0.5 ${align === 'right' ? 'items-end' : 'items-start'}`}
     >
-        <h4 className="font-bold text-gray-800 dark:text-gray-100 text-sm md:text-base leading-tight hover:text-red-500 dark:hover:text-red-400 transition-colors line-clamp-2">
+        <h4 className="font-bold text-gray-800 dark:text-gray-100 text-sm md:text-base leading-tight line-clamp-2">
             {item.title}
         </h4>
         {item.locationName && (
-             <span className={`text-[10px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1 ${align === 'right' ? 'justify-end' : 'justify-start'}`}>
+             <span className={`text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 flex items-center gap-1 font-medium`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
                 {item.locationName}
              </span>
         )}

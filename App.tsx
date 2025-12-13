@@ -397,6 +397,21 @@ export default function App() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
+  // Calculate pending count for the current owner/filter scope
+  const pendingCount = items.filter(item => {
+    if (item.completed) return false;
+    
+    // Respect Owner filter
+    if (filterOwner) {
+        if (filterOwner === 'Me') {
+            if (item.owner && item.owner !== 'Me') return false;
+        } else {
+            if (item.owner !== filterOwner) return false;
+        }
+    }
+    return true;
+  }).length;
+
   const filteredItems = items.filter(item => {
     if (filterStatus === 'pending' && item.completed) return false;
     if (filterStatus === 'completed' && !item.completed) return false;
@@ -610,7 +625,12 @@ export default function App() {
                     {filterStatus === 'all' && <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Start adding your wildest dreams!</p>}
                 </div>
                 ) : filterStatus === 'completed' ? (
-                    <TimelineView items={filteredItems} onEdit={handleEditClick} />
+                    <TimelineView 
+                        items={filteredItems} 
+                        onEdit={handleEditClick}
+                        pendingCount={pendingCount}
+                        onViewPending={() => { setFilterStatus('pending'); triggerHaptic('light'); }}
+                    />
                 ) : (
                 filteredItems.map(item => (
                     <BucketListCard
@@ -649,6 +669,15 @@ export default function App() {
         className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-red-600 to-red-500 text-white rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center z-40 group"
       >
         <Plus className="w-7 h-7 group-hover:rotate-90 transition-transform duration-300" />
+        
+        {/* Pending Count Badge */}
+        {pendingCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-6 w-6 z-50">
+                <span className="relative inline-flex rounded-full h-6 w-6 bg-white dark:bg-gray-900 border-2 border-red-500 dark:border-red-400 items-center justify-center shadow-sm">
+                    <span className="text-[10px] font-extrabold text-red-600 dark:text-red-400 leading-none">{pendingCount > 99 ? '99+' : pendingCount}</span>
+                </span>
+            </span>
+        )}
       </button>
 
       {/* Add/Edit Modal */}
