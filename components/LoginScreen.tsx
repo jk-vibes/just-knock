@@ -19,18 +19,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
-    // Simulate network delay
+    // Simulate network delay and successful Google Auth response
     setTimeout(() => {
-        // Mock User Data without a hardcoded fake photo, allowing App.tsx to show initials
+        // Mock User Data with a real placeholder image so the profile pic updates
         const mockUser: User = {
             id: 'u_12345',
             name: 'Jay Wanderer',
             email: 'jay@example.com',
-            photoUrl: '' // Left empty to simulate no photo provided, triggering fallback UI
+            // Using a high-quality placeholder avatar to simulate a Google profile picture
+            photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100' 
         };
         onLogin(mockUser);
         setIsLoading(false);
-    }, 1500);
+    }, 1200);
   };
 
   return (

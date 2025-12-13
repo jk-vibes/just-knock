@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users } from 'lucide-react';
+import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -81,6 +81,10 @@ export default function App() {
     return JSON.parse(saved);
   });
   
+  // Timeline State
+  const [timelineTime, setTimelineTime] = useState<number>(Date.now());
+  const [isTimelineInteracting, setIsTimelineInteracting] = useState(false);
+
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [isRadarOn, setIsRadarOn] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -145,7 +149,7 @@ export default function App() {
       }
 
       // Handle Special Character Themes via data-attribute
-      if (['spiderman', 'batman', 'elsa'].includes(t)) {
+      if (['marvel', 'batman', 'elsa'].includes(t)) {
           root.setAttribute('data-theme', t);
       }
     };
@@ -320,7 +324,12 @@ export default function App() {
             if (item.id === id) {
                 const isCompleting = !item.completed;
                 triggerHaptic(isCompleting ? 'success' : 'medium');
-                return { ...item, completed: !item.completed };
+                // Set completedAt to now if completing, or undefined if un-completing
+                return { 
+                    ...item, 
+                    completed: isCompleting,
+                    completedAt: isCompleting ? Date.now() : undefined
+                };
             }
             return item;
         });
@@ -381,6 +390,56 @@ export default function App() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
+  // Timeline Helper Logic
+  const getSnapshotItems = useCallback(() => {
+    const minTime = items.length > 0 ? Math.min(...items.map(i => i.createdAt)) : Date.now();
+    const maxTime = Date.now();
+    
+    // Filter items that existed at timelineTime
+    const visibleItems = items.filter(item => item.createdAt <= timelineTime);
+
+    // Map items to their state at timelineTime
+    const mappedItems = visibleItems.map(item => {
+        // It is completed IF it is currently completed AND it was completed ON OR BEFORE timelineTime
+        const isCompletedAtTime = item.completed && (item.completedAt ? item.completedAt <= timelineTime : true);
+        return {
+            ...item,
+            completed: isCompletedAtTime
+        };
+    });
+
+    return { mappedItems, minTime, maxTime };
+  }, [items, timelineTime]);
+
+  const { mappedItems, minTime, maxTime } = getSnapshotItems();
+
+  const incompleteCount = mappedItems.filter(i => !i.completed).length;
+  const completedCount = mappedItems.length - incompleteCount;
+  
+  const filteredItems = mappedItems.filter(item => {
+    if (filterStatus === 'pending' && item.completed) return false;
+    if (filterStatus === 'completed' && !item.completed) return false;
+    
+    // Owner filter
+    if (filterOwner) {
+        // If filtering by "Me", show items with owner 'Me' or items with no owner (backward compatibility/default)
+        if (filterOwner === 'Me') {
+            if (item.owner && item.owner !== 'Me') return false;
+        } else {
+            // Filter by specific family member name
+            if (item.owner !== filterOwner) return false;
+        }
+    }
+    
+    return true;
+  });
+
+  // Formatting date for timeline
+  const formatTimelineDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+
   if (!user) {
     return (
         <>
@@ -408,28 +467,6 @@ export default function App() {
     );
   }
 
-  const incompleteCount = items.filter(i => !i.completed).length;
-  const completedCount = items.length - incompleteCount;
-  const completionPercentage = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
-
-  const filteredItems = items.filter(item => {
-    if (filterStatus === 'pending' && item.completed) return false;
-    if (filterStatus === 'completed' && !item.completed) return false;
-    
-    // Owner filter
-    if (filterOwner) {
-        // If filtering by "Me", show items with owner 'Me' or items with no owner (backward compatibility/default)
-        if (filterOwner === 'Me') {
-            if (item.owner && item.owner !== 'Me') return false;
-        } else {
-            // Filter by specific family member name
-            if (item.owner !== filterOwner) return false;
-        }
-    }
-    
-    return true;
-  });
-
   return (
     <div className="h-screen overflow-hidden bg-[#f8fafc] dark:bg-gray-900 transition-colors duration-300 flex flex-col">
       {/* Header */}
@@ -440,7 +477,7 @@ export default function App() {
               <BucketLogo onClickVersion={() => setIsChangelogOpen(true)} />
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button 
                 onClick={() => {
                     setIsRadarOn(!isRadarOn);
@@ -464,16 +501,23 @@ export default function App() {
                     setIsSettingsOpen(true);
                     triggerHaptic('light');
                 }}
-                className="p-1 pr-3 pl-1 flex items-center gap-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="p-2.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                title="Settings"
               >
-                {user.photoUrl ? (
-                    <img src={user.photoUrl} alt={user.name} className="w-8 h-8 rounded-full border border-gray-200" />
-                ) : (
-                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center text-xs font-bold border border-red-200 dark:border-red-800">
-                        {getUserInitials(user.name)}
-                    </div>
-                )}
-                <Settings className="w-4 h-4" />
+                <Settings className="w-5 h-5" />
+              </button>
+              
+              <button
+                onClick={() => {
+                    if(window.confirm("Are you sure you want to sign out?")) {
+                        triggerHaptic('medium');
+                        setUser(null);
+                    }
+                }}
+                className="p-2.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -579,37 +623,86 @@ export default function App() {
                 )}
             </div>
             
-            {/* Stats Text Line */}
+            {/* Stats & Welcome - Flex Row */}
             {activeTab === 'list' && (
-                <div className="flex justify-end px-1 -mt-1">
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                        {filterOwner && <span className="mr-1 text-gray-500 dark:text-gray-400 font-bold">[{filterOwner === 'Me' ? 'My' : filterOwner + "'s"}]</span>}
-                        {filterStatus === 'completed' ? (
-                             <>
-                                <span className="font-bold text-red-600 dark:text-red-500 text-sm">{completedCount}</span> knocked out
-                             </>
-                        ) : filterStatus === 'pending' ? (
-                             <>
-                                <span className="font-bold text-red-600 dark:text-red-500 text-sm">{incompleteCount}</span> to be knocked out
-                             </>
-                        ) : (
-                             <>
-                                <span className="font-bold text-red-600 dark:text-red-500 text-sm">{incompleteCount}</span> more to knock it out
-                             </>
-                        )}
+                <div className="flex justify-between items-center px-1 -mt-1 gap-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 dark:border-gray-700">
+                     {/* Welcome Message Left */}
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium truncate flex-shrink">
+                        Welcome <span className="text-gray-800 dark:text-gray-200 font-bold">{user.name.split(' ')[0]}</span>, to knock your dreams
+                    </p>
+
+                    {/* Stats Right */}
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap flex items-center gap-2">
+                        {/* Timeline Date with Split Symbol */}
+                        <span className="text-red-500 font-bold">{formatTimelineDate(timelineTime)}</span>
+                        <span className="text-gray-300 dark:text-gray-600">•</span>
+                        {/* Actual Stats */}
+                        <span>
+                            {filterOwner && <span className="mr-1 text-gray-500 dark:text-gray-400 font-bold">[{filterOwner === 'Me' ? 'My' : filterOwner + "'s"}]</span>}
+                            {filterStatus === 'completed' ? (
+                                <>
+                                    <span className="font-bold text-red-600 dark:text-red-500 text-sm">{completedCount}</span> knocked out
+                                </>
+                            ) : filterStatus === 'pending' ? (
+                                <>
+                                    <span className="font-bold text-red-600 dark:text-red-500 text-sm">{incompleteCount}</span> to be knocked out
+                                </>
+                            ) : (
+                                <>
+                                    <span className="font-bold text-red-600 dark:text-red-500 text-sm">{incompleteCount}</span> more to knock it out
+                                </>
+                            )}
+                        </span>
                     </p>
                 </div>
             )}
             
-            {/* Progress Bar */}
+            {/* Timeline Slider */}
              {activeTab === 'list' && items.length > 0 && (
-                <div className="px-1 mb-4 mt-1">
-                    <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div 
-                            className="h-full bg-red-600 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(220,38,38,0.5)]"
-                            style={{ width: `${completionPercentage}%` }}
-                        />
-                    </div>
+                <div className="px-1 mb-2">
+                   <div className="relative h-6 w-full flex items-center">
+                       {/* Background Track */}
+                       <div className="absolute w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                       {/* Filled Track (Based on time) */}
+                       <div 
+                           className="absolute h-1.5 bg-red-500 rounded-full transition-all duration-75"
+                           style={{ width: `${((timelineTime - minTime) / (maxTime - minTime)) * 100}%` }}
+                       ></div>
+                       
+                       {/* Input Range */}
+                       <input 
+                           type="range"
+                           min={minTime}
+                           max={maxTime}
+                           value={timelineTime}
+                           onChange={(e) => {
+                               setTimelineTime(Number(e.target.value));
+                               setIsTimelineInteracting(true);
+                               triggerHaptic('light');
+                           }}
+                           onTouchEnd={() => setIsTimelineInteracting(false)}
+                           onMouseUp={() => setIsTimelineInteracting(false)}
+                           className="absolute w-full h-6 opacity-0 cursor-pointer z-10"
+                       />
+                       
+                       {/* Thumb Visual (Moves with value) */}
+                       <div 
+                           className="absolute h-4 w-4 bg-white dark:bg-gray-800 border-2 border-red-500 rounded-full shadow-md pointer-events-none transition-all duration-75 flex items-center justify-center"
+                           style={{ 
+                               left: `calc(${((timelineTime - minTime) / (maxTime - minTime)) * 100}% - 8px)`
+                           }}
+                       >
+                           <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                           
+                           {/* Hover Date Label */}
+                           {isTimelineInteracting && (
+                               <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap">
+                                   {formatTimelineDate(timelineTime)}
+                                   <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-t-gray-900 border-l-transparent border-r-transparent"></div>
+                               </div>
+                           )}
+                       </div>
+                   </div>
                 </div>
             )}
 
@@ -619,12 +712,12 @@ export default function App() {
                 {filteredItems.length === 0 ? (
                 <div className="text-center py-20 opacity-60">
                     <div className="bg-gray-100 dark:bg-gray-800 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <MapIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                        <Clock className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                     </div>
                     <p className="text-gray-500 dark:text-gray-400 font-medium">
-                        {filterStatus === 'all' ? 'Your bucket is empty.' : `No ${filterStatus} items found.`}
+                        {timelineTime < maxTime ? `No items in ${formatTimelineDate(timelineTime)}` : 'Your bucket is empty.'}
                     </p>
-                    {filterStatus === 'all' && <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Start adding your wildest dreams!</p>}
+                    {timelineTime < maxTime && <p className="text-xs text-gray-400 mt-1">Try moving the timeline forward!</p>}
                 </div>
                 ) : (
                 filteredItems.map(item => (

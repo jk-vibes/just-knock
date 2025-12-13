@@ -35,17 +35,17 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   const history = [
       { 
-          date: "Oct 29, 2024", 
+          date: "Dec 7, 2025", 
           changes: [
               "Added Audio Radar (Text-to-Speech) for nearby alerts",
               "Increased Proximity Range to 2km",
               "Restructured Settings: New 'Data' tab",
-              "Refined Themes: Removed background patterns",
+              "Refined Themes: Introduced Marvel theme",
               "Fixed Mock Data management"
           ] 
       },
       { 
-          date: "Oct 28, 2024", 
+          date: "Dec 6, 2025", 
           changes: ["Family Buckets", "Initial Release", "AI Magic Fill"] 
       }
   ];
@@ -101,7 +101,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
             </div>
 
             <div className="pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
-                <p className="text-[10px] text-gray-400">Build 2024.10.29 • Made with ❤️</p>
+                <p className="text-[10px] text-gray-400">Build 2025.12.07 • Made with ❤️</p>
             </div>
         </div>
       </div>

@@ -51,20 +51,24 @@
       /* --- Character Theme Overrides --- */
 
       /* Crucial Fix: Make the App container transparent for character themes so body background shows */
-      [data-theme='spiderman'] #root > div,
+      [data-theme='marvel'] #root > div,
       [data-theme='batman'] #root > div,
       [data-theme='elsa'] #root > div {
         background-color: transparent !important;
       }
       
-      /* Spiderman Theme: Blue/Red */
-      [data-theme='spiderman'] body {
-        background-color: #f0f9ff; /* Light Blue */
+      /* Marvel Theme: Based on provided palette (Red, Dk Red, Black, Silver, Blue, Dk Blue) */
+      [data-theme='marvel'] body {
+        background-color: #f2f4f6 !important; /* Silver/Light Grey from palette */
       }
-      [data-theme='spiderman'] .text-red-600 { color: #dc2626 !important; }
-      [data-theme='spiderman'] .bg-red-600 { background-color: #ef4444 !important; }
-      [data-theme='spiderman'] header { border-bottom-color: #3b82f6 !important; background-color: rgba(255, 255, 255, 0.95) !important; }
-      [data-theme='spiderman'] .bg-red-50 { background-color: #eff6ff !important; color: #1d4ed8 !important; }
+      /* Primary Red */
+      [data-theme='marvel'] .text-red-600 { color: #ec1d24 !important; } 
+      [data-theme='marvel'] .bg-red-600 { background-color: #ec1d24 !important; }
+      /* Header uses Dark Blue/Black from palette for structure */
+      [data-theme='marvel'] header { border-bottom-color: #001D4A !important; background-color: rgba(255, 255, 255, 0.95) !important; }
+      /* Highlights use Blue/Silver */
+      [data-theme='marvel'] .bg-red-50 { background-color: #e3f2fd !important; color: #0055a4 !important; }
+      [data-theme='marvel'] .text-gray-900 { color: #202020 !important; } /* Black from palette */
 
       /* Batman Theme: Dark/Yellow */
       [data-theme='batman'] { color-scheme: dark; }

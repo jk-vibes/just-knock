@@ -11,6 +11,7 @@ export interface BucketItem {
   locationName?: string;
   coordinates?: Coordinates;
   completed: boolean;
+  completedAt?: number; // Timestamp when item was completed
   createdAt: number;
   category?: string;
   interests?: string[];
@@ -34,7 +35,7 @@ export enum AppView {
   MAP = 'MAP'
 }
 
-export type Theme = 'light' | 'dark' | 'system' | 'spiderman' | 'batman' | 'elsa';
+export type Theme = 'light' | 'dark' | 'system' | 'marvel' | 'batman' | 'elsa';
 
 export interface User {
   id: string;

@@ -181,7 +181,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {renderThemeOption('light', 'Light', <Sun className="w-5 h-5 text-yellow-500" />, 'bg-yellow-100')}
                     {renderThemeOption('dark', 'Dark', <Moon className="w-5 h-5 text-indigo-500" />, 'bg-indigo-100')}
                     {renderThemeOption('system', 'System', <Monitor className="w-5 h-5 text-gray-500" />, 'bg-gray-100')}
-                    {renderThemeOption('spiderman', 'Spidey', <span className="text-lg">🕸️</span>, 'bg-red-100')}
+                    {renderThemeOption('marvel', 'Marvel', <span className="text-lg">🛡️</span>, 'bg-red-100')}
                     {renderThemeOption('batman', 'Batman', <span className="text-lg">🦇</span>, 'bg-gray-800 text-yellow-400')}
                     {renderThemeOption('elsa', 'Frozen', <Snowflake className="w-5 h-5 text-cyan-500" />, 'bg-cyan-100')}
                 </div>
@@ -369,17 +369,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         Reset All Data
                         </button>
                     </div>
-                 </div>
-
-                 <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Account</h3>
-                    <button 
-                        onClick={onLogout}
-                        className="w-full flex items-center justify-center gap-2 p-3 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl font-medium transition-colors"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        Sign Out
-                    </button>
                  </div>
              </div>
           )}
