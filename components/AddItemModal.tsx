@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users } from 'lucide-react';
+import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, CheckCircle2, Circle } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem } from '../services/geminiService';
 import { BucketItemDraft } from '../types';
 
@@ -34,6 +34,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<string>('Me');
+  
+  // Completion State
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [completedDate, setCompletedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Initialize state when initialData changes or mode switches
   useEffect(() => {
@@ -43,6 +47,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         setSelectedInterests(initialData.interests || []);
         setSelectedOwner(initialData.owner || 'Me');
         setInput(initialData.title); // Pre-fill input for reference
+        
+        // Handle completion data
+        if (initialData.isCompleted || (initialData as any).completed) {
+            setIsCompleted(true);
+            const ts = initialData.completedAt || Date.now();
+            setCompletedDate(new Date(ts).toISOString().split('T')[0]);
+        } else {
+            setIsCompleted(false);
+            setCompletedDate(new Date().toISOString().split('T')[0]);
+        }
+
     } else if (isOpen && mode === 'add') {
         // Reset for add mode
         setDraft(null);
@@ -50,6 +65,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         setSelectedCategory('');
         setSelectedInterests([]);
         setSelectedOwner('Me');
+        setIsCompleted(false);
+        setCompletedDate(new Date().toISOString().split('T')[0]);
     }
   }, [isOpen, initialData, mode]);
 
@@ -83,13 +100,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleConfirm = () => {
     if (draft) {
+      // Convert date string back to timestamp
+      const completedTimestamp = isCompleted ? new Date(completedDate).getTime() : undefined;
+
       onAdd({
         ...draft,
         category: selectedCategory,
         interests: selectedInterests,
-        owner: selectedOwner
+        owner: selectedOwner,
+        isCompleted: isCompleted,
+        completedAt: completedTimestamp
       });
-      // Don't reset here immediately, let the parent close handler do it or useEffect
       onClose();
     }
   };
@@ -212,6 +233,56 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
               {/* Categorization Controls */}
               <div className="space-y-3 pt-1">
+                
+                {/* Status Selection (Radio Style) */}
+                <div className="space-y-2 pt-1">
+                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        Status
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                        {/* Pending Radio */}
+                        <div 
+                            onClick={() => setIsCompleted(false)}
+                            className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 flex items-center gap-3 ${!isCompleted ? 'border-gray-500 bg-gray-50 dark:bg-gray-700' : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                        >
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${!isCompleted ? 'border-gray-600 dark:border-gray-300' : 'border-gray-300 dark:border-gray-600'}`}>
+                                {!isCompleted && <div className="w-2.5 h-2.5 rounded-full bg-gray-600 dark:bg-gray-300" />}
+                            </div>
+                            <span className={`text-sm font-semibold ${!isCompleted ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>Still Dreaming</span>
+                        </div>
+
+                        {/* Completed Radio */}
+                        <div 
+                            onClick={() => setIsCompleted(true)}
+                            className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 flex flex-col gap-2 ${isCompleted ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isCompleted ? 'border-green-600 dark:border-green-400' : 'border-gray-300 dark:border-gray-600'}`}>
+                                    {isCompleted && <div className="w-2.5 h-2.5 rounded-full bg-green-600 dark:bg-green-400" />}
+                                </div>
+                                <span className={`text-sm font-semibold ${isCompleted ? 'text-green-900 dark:text-green-100' : 'text-gray-500 dark:text-gray-400'}`}>Knocked Out!</span>
+                            </div>
+
+                            {/* Embedded Date Picker */}
+                            {isCompleted && (
+                                <div className="w-full pt-2 mt-1 border-t border-green-200 dark:border-green-800/50 animate-in fade-in slide-in-from-top-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Calendar className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                        <span className="text-xs font-medium text-green-700 dark:text-green-300">When?</span>
+                                    </div>
+                                    <input 
+                                        type="date"
+                                        value={completedDate}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => setCompletedDate(e.target.value)}
+                                        className="w-full p-1.5 bg-white dark:bg-gray-900 border border-green-200 dark:border-green-700 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-green-500 shadow-sm"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Family Selection - Only show if family members exist */}
                 {familyMembers.length > 0 && (
                     <div>

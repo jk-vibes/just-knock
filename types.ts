@@ -27,6 +27,8 @@ export interface BucketItemDraft {
   category?: string;
   interests?: string[];
   owner?: string;
+  isCompleted?: boolean;
+  completedAt?: number;
 }
 
 export enum AppView {

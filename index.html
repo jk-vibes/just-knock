@@ -50,43 +50,123 @@
 
       /* --- Character Theme Overrides --- */
 
-      /* Crucial Fix: Make the App container transparent for character themes so body background shows */
+      /* Transparent App Container for themes that set Body background */
       [data-theme='marvel'] #root > div,
       [data-theme='batman'] #root > div,
       [data-theme='elsa'] #root > div {
         background-color: transparent !important;
       }
       
-      /* Marvel Theme: Based on provided palette (Red, Dk Red, Black, Silver, Blue, Dk Blue) */
+      /* --- MARVEL THEME --- */
+      /* Palette: Red #E62429, Dark Blue #001D4A, Blue #0064D2, Silver #F0F0F0, Black #202020 */
+      
       [data-theme='marvel'] body {
-        background-color: #f2f4f6 !important; /* Silver/Light Grey from palette */
+        background-color: #F0F2F5 !important; /* Silver/Light Grey */
+        color: #202020;
       }
-      /* Primary Red */
-      [data-theme='marvel'] .text-red-600 { color: #ec1d24 !important; } 
-      [data-theme='marvel'] .bg-red-600 { background-color: #ec1d24 !important; }
-      /* Header uses Dark Blue/Black from palette for structure */
-      [data-theme='marvel'] header { border-bottom-color: #001D4A !important; background-color: rgba(255, 255, 255, 0.95) !important; }
-      /* Highlights use Blue/Silver */
-      [data-theme='marvel'] .bg-red-50 { background-color: #e3f2fd !important; color: #0055a4 !important; }
-      [data-theme='marvel'] .text-gray-900 { color: #202020 !important; } /* Black from palette */
 
-      /* Batman Theme: Dark/Yellow */
+      /* Header: Deep Dark Blue/Black */
+      [data-theme='marvel'] header { 
+        background-color: #0F172A !important; 
+        border-bottom: 3px solid #E62429 !important; /* Signature Red Border */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      [data-theme='marvel'] header .text-gray-900,
+      [data-theme='marvel'] header .text-gray-800,
+      [data-theme='marvel'] header .text-gray-500,
+      [data-theme='marvel'] header button svg {
+        color: #FFFFFF !important;
+      }
+      /* Header Buttons */
+      [data-theme='marvel'] header button.bg-gray-100 {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        color: #fff !important;
+      }
+      /* Logo Text override in header */
+      [data-theme='marvel'] header text {
+        fill: #FFFFFF !important;
+      }
+      [data-theme='marvel'] header path[fill="#ef4444"] {
+        fill: #E62429 !important;
+      }
+
+      /* Cards & Containers */
+      [data-theme='marvel'] .bg-white { 
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        /* Subtle Red/Blue accent on left border for cards */
+        border-left: 4px solid #0064D2 !important; 
+      }
+      
+      /* Primary Actions (FAB, Add Buttons): Marvel Red */
+      [data-theme='marvel'] .bg-red-600,
+      [data-theme='marvel'] .bg-gradient-to-br,
+      [data-theme='marvel'] .bg-gradient-to-r {
+        background-image: none !important;
+        background-color: #E62429 !important;
+        box-shadow: 0 4px 14px 0 rgba(230, 36, 41, 0.39) !important;
+      }
+      
+      /* Selection/Active States: Comic Blue */
+      [data-theme='marvel'] .bg-red-50 { 
+        background-color: #EBF8FF !important; /* Light Blue */
+        color: #0064D2 !important; /* Blue Text */
+        border-color: #90CDF4 !important;
+      }
+      
+      /* Text Colors */
+      [data-theme='marvel'] .text-red-600,
+      [data-theme='marvel'] .text-red-500 { 
+        color: #E62429 !important; 
+      }
+      
+      /* Interest Tags: Dark Accent */
+      [data-theme='marvel'] .rounded-full.bg-red-50 {
+        background-color: #202020 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #E62429 !important;
+      }
+
+      /* Icons */
+      [data-theme='marvel'] .text-gray-400 { color: #94a3b8 !important; }
+      [data-theme='marvel'] svg.text-red-500 { color: #E62429 !important; }
+
+      /* Modals */
+      [data-theme='marvel'] .bg-white.rounded-2xl {
+        border: 2px solid #E62429 !important;
+      }
+
+
+      /* --- BATMAN THEME --- */
+      /* Dark/Yellow */
       [data-theme='batman'] { color-scheme: dark; }
       [data-theme='batman'] body { 
-        background-color: #111827 !important; /* Gray 900 */
-        color: #e5e7eb;
+        background-color: #0a0a0a !important; 
+        color: #d1d5db;
       }
-      [data-theme='batman'] .bg-white { background-color: #1f2937 !important; color: #e5e7eb; border-color: #374151 !important; }
+      [data-theme='batman'] header { 
+        background-color: #000000 !important; 
+        border-bottom-color: #374151 !important; 
+      }
+      [data-theme='batman'] .bg-white { 
+        background-color: #171717 !important; 
+        color: #e5e7eb; 
+        border-color: #262626 !important; 
+      }
       [data-theme='batman'] .text-gray-900 { color: #f3f4f6 !important; }
       [data-theme='batman'] .text-gray-800 { color: #e5e7eb !important; }
-      [data-theme='batman'] .text-gray-500 { color: #9ca3af !important; }
-      [data-theme='batman'] .bg-gray-50 { background-color: #374151 !important; color: #e5e7eb !important; border-color: #4b5563 !important; }
-      [data-theme='batman'] .text-red-600 { color: #facc15 !important; } /* Yellow */
-      [data-theme='batman'] .bg-red-600 { background-color: #eab308 !important; color: #000 !important; }
-      [data-theme='batman'] .bg-red-50 { background-color: #422006 !important; color: #facc15 !important; }
-      [data-theme='batman'] header { background-color: rgba(17, 24, 39, 0.95) !important; border-bottom-color: #374151 !important; }
+      [data-theme='batman'] .bg-gray-50 { background-color: #262626 !important; color: #e5e7eb !important; border-color: #404040 !important; }
+      
+      /* Yellow Accents */
+      [data-theme='batman'] .text-red-600 { color: #fbbf24 !important; } /* Amber-400 */
+      [data-theme='batman'] .bg-red-600 { background-color: #f59e0b !important; color: #000 !important; }
+      [data-theme='batman'] .bg-gradient-to-br { background: #f59e0b !important; color: #000 !important; }
+      [data-theme='batman'] .bg-red-50 { background-color: #2a2a2a !important; color: #fbbf24 !important; border-color: #451a03 !important; }
 
-      /* Elsa Theme: Ice Blue/White */
+
+      /* --- ELSA THEME --- */
+      /* Ice Blue/White */
       [data-theme='elsa'] body { 
         background-color: #ecfeff; /* Cyan 50 */
       }

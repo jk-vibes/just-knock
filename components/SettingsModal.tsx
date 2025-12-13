@@ -223,7 +223,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   }
                   value={newItemInput}
                   onChange={(e) => setNewItemInput(e.target.value)}
-                  className="flex-grow p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm dark:text-white outline-none focus:ring-2 focus:ring-red-500"
+                  className="flex-grow p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none focus:ring-2 focus:ring-red-500"
                   onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
                 />
                 <button 

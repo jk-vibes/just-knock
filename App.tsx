@@ -7,6 +7,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { LoginScreen } from './components/LoginScreen';
 import { MapView } from './components/MapView';
 import { ChangelogModal } from './components/ChangelogModal';
+import { CompleteDateModal } from './components/CompleteDateModal';
 import { BucketItem, BucketItemDraft, Coordinates, Theme, User } from './types';
 import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance, speak, getDistanceSpeech } from './utils/geo';
 import { MOCK_BUCKET_ITEMS, generateMockItems } from './utils/mockData';
@@ -81,10 +82,6 @@ export default function App() {
     return JSON.parse(saved);
   });
   
-  // Timeline State
-  const [timelineTime, setTimelineTime] = useState<number>(Date.now());
-  const [isTimelineInteracting, setIsTimelineInteracting] = useState(false);
-
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [isRadarOn, setIsRadarOn] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -101,8 +98,9 @@ export default function App() {
   const [filterOwner, setFilterOwner] = useState<string | null>(null); // null = All
   const [isCompact, setIsCompact] = useState(false);
 
-  // Edit State
+  // Edit/Action State
   const [editingItem, setEditingItem] = useState<BucketItem | null>(null);
+  const [completingItem, setCompletingItem] = useState<BucketItem | null>(null);
 
   // Keep track of notified items to avoid spamming
   const notifiedItems = useRef<Set<string>>(new Set());
@@ -287,7 +285,10 @@ export default function App() {
                 coordinates: (draft.latitude && draft.longitude) ? { latitude: draft.latitude, longitude: draft.longitude } : item.coordinates,
                 category: draft.category,
                 interests: draft.interests,
-                owner: draft.owner
+                owner: draft.owner,
+                // Update completion status and date if changed
+                completed: draft.isCompleted !== undefined ? draft.isCompleted : item.completed,
+                completedAt: draft.isCompleted ? draft.completedAt : (draft.isCompleted === false ? undefined : item.completedAt)
             } : item
         ));
         setEditingItem(null);
@@ -301,8 +302,9 @@ export default function App() {
             latitude: draft.latitude,
             longitude: draft.longitude
         } : undefined,
-        completed: false,
-        createdAt: Date.now(),
+        completed: draft.isCompleted || false,
+        createdAt: Date.now(), 
+        completedAt: draft.isCompleted ? draft.completedAt : undefined,
         category: draft.category,
         interests: draft.interests,
         owner: draft.owner
@@ -319,22 +321,33 @@ export default function App() {
   };
 
   const handleToggleComplete = (id: string) => {
-    setItems(prev => {
-        const newItems = prev.map(item => {
-            if (item.id === id) {
-                const isCompleting = !item.completed;
-                triggerHaptic(isCompleting ? 'success' : 'medium');
-                // Set completedAt to now if completing, or undefined if un-completing
-                return { 
-                    ...item, 
-                    completed: isCompleting,
-                    completedAt: isCompleting ? Date.now() : undefined
-                };
-            }
-            return item;
-        });
-        return newItems;
-    });
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+
+    if (item.completed) {
+        // If already completed, toggle off immediately
+        triggerHaptic('medium');
+        setItems(prev => prev.map(i => i.id === id ? { 
+            ...i, 
+            completed: false, 
+            completedAt: undefined 
+        } : i));
+    } else {
+        // If incomplete, open date picker modal
+        triggerHaptic('light');
+        setCompletingItem(item);
+    }
+  };
+
+  const handleConfirmCompletion = (date: number) => {
+      if (!completingItem) return;
+      triggerHaptic('success');
+      setItems(prev => prev.map(i => i.id === completingItem.id ? { 
+          ...i, 
+          completed: true, 
+          completedAt: date 
+      } : i));
+      setCompletingItem(null);
   };
 
   const handleDelete = (id: string) => {
@@ -346,7 +359,6 @@ export default function App() {
 
   const handleClearMockData = () => {
     triggerHaptic('warning');
-    // Mock items have IDs starting with specific prefixes from mockData.ts (ind-, usa-, gen-)
     setItems(prev => prev.filter(item => {
         const isMock = item.id.startsWith('ind-') || item.id.startsWith('usa-') || item.id.startsWith('gen-');
         return !isMock;
@@ -355,11 +367,9 @@ export default function App() {
 
   const handleAddMockData = () => {
       triggerHaptic('success');
-      // Get fresh mock data
       const mockItems = generateMockItems();
       
       setItems(prev => {
-          // Filter out any mock items that might already exist by ID to prevent duplicates
           const existingIds = new Set(prev.map(i => i.id));
           const newMocks = mockItems.filter(i => !existingIds.has(i.id));
           
@@ -382,63 +392,25 @@ export default function App() {
       }
   };
 
-  const getUserInitials = (name: string) => {
-      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  };
-  
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
-  // Timeline Helper Logic
-  const getSnapshotItems = useCallback(() => {
-    const minTime = items.length > 0 ? Math.min(...items.map(i => i.createdAt)) : Date.now();
-    const maxTime = Date.now();
-    
-    // Filter items that existed at timelineTime
-    const visibleItems = items.filter(item => item.createdAt <= timelineTime);
-
-    // Map items to their state at timelineTime
-    const mappedItems = visibleItems.map(item => {
-        // It is completed IF it is currently completed AND it was completed ON OR BEFORE timelineTime
-        const isCompletedAtTime = item.completed && (item.completedAt ? item.completedAt <= timelineTime : true);
-        return {
-            ...item,
-            completed: isCompletedAtTime
-        };
-    });
-
-    return { mappedItems, minTime, maxTime };
-  }, [items, timelineTime]);
-
-  const { mappedItems, minTime, maxTime } = getSnapshotItems();
-
-  const incompleteCount = mappedItems.filter(i => !i.completed).length;
-  const completedCount = mappedItems.length - incompleteCount;
-  
-  const filteredItems = mappedItems.filter(item => {
+  const filteredItems = items.filter(item => {
     if (filterStatus === 'pending' && item.completed) return false;
     if (filterStatus === 'completed' && !item.completed) return false;
     
     // Owner filter
     if (filterOwner) {
-        // If filtering by "Me", show items with owner 'Me' or items with no owner (backward compatibility/default)
         if (filterOwner === 'Me') {
             if (item.owner && item.owner !== 'Me') return false;
         } else {
-            // Filter by specific family member name
             if (item.owner !== filterOwner) return false;
         }
     }
     
     return true;
   });
-
-  // Formatting date for timeline
-  const formatTimelineDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  };
 
   if (!user) {
     return (
@@ -449,7 +421,7 @@ export default function App() {
                     onClose={() => setIsSettingsOpen(false)}
                     currentTheme={theme}
                     onThemeChange={setTheme}
-                    onClearData={() => setItems([])} // Actually clear data here
+                    onClearData={() => setItems([])}
                     onClearMockData={handleClearMockData}
                     onAddMockData={handleAddMockData}
                     categories={[]} interests={[]}
@@ -529,7 +501,7 @@ export default function App() {
         <div className="max-w-2xl mx-auto px-4 py-2 space-y-2">
             
             {/* Controls Toolbar: View Mode + Filters */}
-            <div className="flex flex-wrap gap-2 justify-between items-center px-1">
+            <div className="flex flex-wrap gap-2 justify-between items-center px-1 mb-2">
                 
                 {/* View Switcher (List/Map) */}
                 <div className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
@@ -623,88 +595,7 @@ export default function App() {
                 )}
             </div>
             
-            {/* Stats & Welcome - Flex Row */}
-            {activeTab === 'list' && (
-                <div className="flex justify-between items-center px-1 -mt-1 gap-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm p-2 rounded-xl border border-gray-100 dark:border-gray-700">
-                     {/* Welcome Message Left */}
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium truncate flex-shrink">
-                        Welcome <span className="text-gray-800 dark:text-gray-200 font-bold">{user.name.split(' ')[0]}</span>, to knock your dreams
-                    </p>
-
-                    {/* Stats Right */}
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap flex items-center gap-2">
-                        {/* Timeline Date with Split Symbol */}
-                        <span className="text-red-500 font-bold">{formatTimelineDate(timelineTime)}</span>
-                        <span className="text-gray-300 dark:text-gray-600">•</span>
-                        {/* Actual Stats */}
-                        <span>
-                            {filterOwner && <span className="mr-1 text-gray-500 dark:text-gray-400 font-bold">[{filterOwner === 'Me' ? 'My' : filterOwner + "'s"}]</span>}
-                            {filterStatus === 'completed' ? (
-                                <>
-                                    <span className="font-bold text-red-600 dark:text-red-500 text-sm">{completedCount}</span> knocked out
-                                </>
-                            ) : filterStatus === 'pending' ? (
-                                <>
-                                    <span className="font-bold text-red-600 dark:text-red-500 text-sm">{incompleteCount}</span> to be knocked out
-                                </>
-                            ) : (
-                                <>
-                                    <span className="font-bold text-red-600 dark:text-red-500 text-sm">{incompleteCount}</span> more to knock it out
-                                </>
-                            )}
-                        </span>
-                    </p>
-                </div>
-            )}
-            
-            {/* Timeline Slider */}
-             {activeTab === 'list' && items.length > 0 && (
-                <div className="px-1 mb-2">
-                   <div className="relative h-6 w-full flex items-center">
-                       {/* Background Track */}
-                       <div className="absolute w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-                       {/* Filled Track (Based on time) */}
-                       <div 
-                           className="absolute h-1.5 bg-red-500 rounded-full transition-all duration-75"
-                           style={{ width: `${((timelineTime - minTime) / (maxTime - minTime)) * 100}%` }}
-                       ></div>
-                       
-                       {/* Input Range */}
-                       <input 
-                           type="range"
-                           min={minTime}
-                           max={maxTime}
-                           value={timelineTime}
-                           onChange={(e) => {
-                               setTimelineTime(Number(e.target.value));
-                               setIsTimelineInteracting(true);
-                               triggerHaptic('light');
-                           }}
-                           onTouchEnd={() => setIsTimelineInteracting(false)}
-                           onMouseUp={() => setIsTimelineInteracting(false)}
-                           className="absolute w-full h-6 opacity-0 cursor-pointer z-10"
-                       />
-                       
-                       {/* Thumb Visual (Moves with value) */}
-                       <div 
-                           className="absolute h-4 w-4 bg-white dark:bg-gray-800 border-2 border-red-500 rounded-full shadow-md pointer-events-none transition-all duration-75 flex items-center justify-center"
-                           style={{ 
-                               left: `calc(${((timelineTime - minTime) / (maxTime - minTime)) * 100}% - 8px)`
-                           }}
-                       >
-                           <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
-                           
-                           {/* Hover Date Label */}
-                           {isTimelineInteracting && (
-                               <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap">
-                                   {formatTimelineDate(timelineTime)}
-                                   <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-t-gray-900 border-l-transparent border-r-transparent"></div>
-                               </div>
-                           )}
-                       </div>
-                   </div>
-                </div>
-            )}
+            {/* Removed Welcome Message and Timeline Slider as per request */}
 
             {/* Content View */}
             {activeTab === 'list' ? (
@@ -715,9 +606,9 @@ export default function App() {
                         <Clock className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                     </div>
                     <p className="text-gray-500 dark:text-gray-400 font-medium">
-                        {timelineTime < maxTime ? `No items in ${formatTimelineDate(timelineTime)}` : 'Your bucket is empty.'}
+                        {filterStatus === 'all' ? 'Your bucket is empty.' : `No ${filterStatus} items found.`}
                     </p>
-                    {timelineTime < maxTime && <p className="text-xs text-gray-400 mt-1">Try moving the timeline forward!</p>}
+                    {filterStatus === 'all' && <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Start adding your wildest dreams!</p>}
                 </div>
                 ) : (
                 filteredItems.map(item => (
@@ -778,9 +669,19 @@ export default function App() {
             longitude: editingItem.coordinates?.longitude,
             category: editingItem.category,
             interests: editingItem.interests,
-            owner: editingItem.owner
+            owner: editingItem.owner,
+            isCompleted: editingItem.completed,
+            completedAt: editingItem.completedAt
         } : null}
         mode={editingItem ? 'edit' : 'add'}
+      />
+
+      {/* Complete Date Modal */}
+      <CompleteDateModal 
+        isOpen={!!completingItem}
+        onClose={() => setCompletingItem(null)}
+        onConfirm={handleConfirmCompletion}
+        itemTitle={completingItem?.title}
       />
 
       {/* Settings Modal */}
