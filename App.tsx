@@ -8,6 +8,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { MapView } from './components/MapView';
 import { ChangelogModal } from './components/ChangelogModal';
 import { CompleteDateModal } from './components/CompleteDateModal';
+import { TimelineView } from './components/TimelineView';
 import { BucketItem, BucketItemDraft, Coordinates, Theme, User } from './types';
 import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance, speak, getDistanceSpeech } from './utils/geo';
 import { MOCK_BUCKET_ITEMS, generateMockItems } from './utils/mockData';
@@ -594,8 +595,6 @@ export default function App() {
                     </div>
                 )}
             </div>
-            
-            {/* Removed Welcome Message and Timeline Slider as per request */}
 
             {/* Content View */}
             {activeTab === 'list' ? (
@@ -610,6 +609,8 @@ export default function App() {
                     </p>
                     {filterStatus === 'all' && <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Start adding your wildest dreams!</p>}
                 </div>
+                ) : filterStatus === 'completed' ? (
+                    <TimelineView items={filteredItems} onEdit={handleEditClick} />
                 ) : (
                 filteredItems.map(item => (
                     <BucketListCard
