@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
@@ -43,7 +42,7 @@ const BucketLogo = ({ onClickVersion }: { onClickVersion: () => void }) => (
                 v1.2
             </button>
         </div>
-        <span className="text-[9px] font-bold text-red-600 dark:text-red-500 tracking-widest leading-none mt-0.5 ml-0.5">just knock it</span>
+        <span className="logo-text text-[9px] font-bold text-red-600 dark:text-red-500 tracking-widest leading-none mt-0.5 ml-0.5">just knock it</span>
     </div>
 );
 
@@ -683,7 +682,7 @@ export default function App() {
         className="fixed bottom-6 right-6 z-50 group transition-transform duration-200 hover:scale-110 active:scale-95 text-gray-700 dark:text-gray-200"
         title={`${globalPendingCount} to knock out`}
       >
-        <div className="relative w-12 h-12 filter drop-shadow-2xl">
+        <div className="relative w-16 h-16 filter drop-shadow-2xl">
             {/* SVG Bucket Icon - Dynamic Liquid Fill - Thinner Stroke & Sharper Shape */}
             <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
@@ -699,8 +698,8 @@ export default function App() {
             </svg>
 
              {/* Plus Badge - Adjusted for smaller bucket */}
-            <div className="absolute -top-2 -right-2 bg-red-600 dark:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm">
-                <Plus className="w-4 h-4" strokeWidth={3} />
+            <div className="absolute -top-2 -right-2 bg-red-600 dark:bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm">
+                <Plus className="w-5 h-5" strokeWidth={3} />
             </div>
 
             {/* Hover Tooltip */}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone } from 'lucide-react';
 import { Theme } from '../types';
@@ -85,6 +84,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (result.success) {
         setBackupStatus('success');
         setLastBackup(result.timestamp);
+        // Open Google Drive in new tab
+        window.open('https://drive.google.com', '_blank');
     } else {
         setBackupStatus('error');
     }

@@ -111,20 +111,19 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
       {/* Background Progress Bar (Optional visual flare) */}
       <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${item.completed ? 'bg-red-500' : 'bg-transparent'}`} />
 
-      {/* Theme Specific Blended Icons */}
+      {/* Theme Specific Blended Icons - Size Reduced to avoid overlap */}
       {theme === 'marvel' && (
-        <div className="absolute -bottom-3 -right-3 w-24 h-24 opacity-20 pointer-events-none transform rotate-12">
+        <div className="absolute -bottom-2 -right-2 w-16 h-16 opacity-20 pointer-events-none transform rotate-12">
           <CaptainAmericaIcon />
         </div>
       )}
       {theme === 'batman' && (
-        // Adjusted container aspect ratio (1.5:1) to prevent oblong distortion
-        <div className="absolute -bottom-2 -right-2 w-24 h-16 opacity-20 pointer-events-none transform -rotate-12">
+        <div className="absolute -bottom-1 -right-1 w-20 h-12 opacity-20 pointer-events-none transform -rotate-12">
           <BatIcon />
         </div>
       )}
       {theme === 'elsa' && (
-        <div className="absolute -bottom-3 -right-3 w-24 h-24 opacity-20 pointer-events-none transform rotate-12">
+        <div className="absolute -bottom-2 -right-2 w-16 h-16 opacity-20 pointer-events-none transform rotate-12">
           <ElsaIcon />
         </div>
       )}
