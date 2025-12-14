@@ -131,24 +131,33 @@ export default function App() {
     localStorage.setItem(FAM_KEY, JSON.stringify(familyMembers));
   }, [familyMembers]);
 
-  // Apply Theme
+  // Apply Theme and Meta Theme Color
   useEffect(() => {
     const root = window.document.documentElement;
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     
     // Clear previous theme attributes
     root.removeAttribute('data-theme');
     
     const applyTheme = (t: Theme) => {
       // Handle standard dark/light classes
-      if (t === 'dark' || t === 'batman' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      const isDark = t === 'dark' || t === 'batman' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
         root.classList.add('dark');
       } else {
         root.classList.remove('dark');
       }
 
-      // Handle Special Character Themes via data-attribute
+      // Handle Special Character Themes via data-attribute and Status Bar Color
       if (['marvel', 'batman', 'elsa'].includes(t)) {
           root.setAttribute('data-theme', t);
+          
+          if (t === 'marvel' && metaThemeColor) metaThemeColor.setAttribute('content', '#1e3a8a'); // Blue
+          if (t === 'batman' && metaThemeColor) metaThemeColor.setAttribute('content', '#000000'); // Black
+          if (t === 'elsa' && metaThemeColor) metaThemeColor.setAttribute('content', '#ecfeff'); // Cyan 50
+      } else {
+          // Default Red for Light/Dark
+          if (metaThemeColor) metaThemeColor.setAttribute('content', isDark ? '#111827' : '#ef4444');
       }
     };
     
