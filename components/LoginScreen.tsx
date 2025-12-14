@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
 import { driveService } from '../services/driveService';
+import { Settings, HelpCircle, LogIn } from 'lucide-react';
 
 interface LoginScreenProps {
   onLogin: (user: User) => void;
@@ -21,58 +22,71 @@ declare global {
     }
 }
 
+// REPLACE THIS WITH YOUR NEW CLIENT ID FROM GOOGLE CLOUD CONSOLE
+const DEFAULT_CLIENT_ID = '482285261060-fe5mujd6kn3gos3k6kgoj0kjl63u0cr1.apps.googleusercontent.com';
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const [clientId, setClientId] = useState(() => localStorage.getItem('jk_client_id') || DEFAULT_CLIENT_ID);
   const tokenClient = useRef<any>(null);
 
+  // Initialize or Re-initialize Client when ID changes
   useEffect(() => {
+    // Cleanup previous instance if any
+    tokenClient.current = null;
+    
     const initializeGoogleAuth = () => {
-        if (window.google?.accounts?.oauth2 && !tokenClient.current) {
-            tokenClient.current = window.google.accounts.oauth2.initTokenClient({
-                client_id: '482285261060-fe5mujd6kn3gos3k6kgoj0kjl63u0cr1.apps.googleusercontent.com',
-                scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
-                callback: async (tokenResponse: any) => {
-                    if (tokenResponse.access_token) {
-                        // Store token for Drive operations
-                        driveService.setAccessToken(tokenResponse.access_token);
-                        
-                        // Fetch User Profile
-                        try {
-                            const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                            });
+        if (window.google?.accounts?.oauth2) {
+            try {
+                tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+                    client_id: clientId,
+                    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+                    callback: async (tokenResponse: any) => {
+                        if (tokenResponse.access_token) {
+                            // Store token for Drive operations
+                            driveService.setAccessToken(tokenResponse.access_token);
                             
-                            if (!userInfoResponse.ok) throw new Error("Failed to fetch profile");
-                            
-                            const userInfo = await userInfoResponse.json();
-                            
-                            const user: User = {
-                                id: userInfo.sub,
-                                name: userInfo.name,
-                                email: userInfo.email,
-                                photoUrl: userInfo.picture
-                            };
-                            
-                            onLogin(user);
-                        } catch (error) {
-                            console.error("Login failed during profile fetch:", error);
-                            alert("Failed to retrieve user profile. Please try again.");
+                            // Fetch User Profile
+                            try {
+                                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                                });
+                                
+                                if (!userInfoResponse.ok) throw new Error("Failed to fetch profile");
+                                
+                                const userInfo = await userInfoResponse.json();
+                                
+                                const user: User = {
+                                    id: userInfo.sub,
+                                    name: userInfo.name,
+                                    email: userInfo.email,
+                                    photoUrl: userInfo.picture
+                                };
+                                
+                                onLogin(user);
+                            } catch (error) {
+                                console.error("Login failed during profile fetch:", error);
+                                alert("Failed to retrieve user profile. Please try again.");
+                            }
                         }
+                        setIsLoading(false);
+                    },
+                    error_callback: (error: any) => {
+                        setIsLoading(false);
+                        // Handle user closing the popup gracefully
+                        if (error.type === 'popup_closed') {
+                            return;
+                        }
+                        
+                        console.error("Google Auth Error:", error);
+                        // Detailed error for developers
+                        alert(`Login failed: ${error.message || JSON.stringify(error)}\n\nCheck if your Client ID is correct and the URL is added to 'Authorized JavaScript origins' in Google Cloud Console.`);
                     }
-                    setIsLoading(false);
-                },
-                error_callback: (error: any) => {
-                    setIsLoading(false);
-                    // Handle user closing the popup gracefully
-                    if (error.type === 'popup_closed') {
-                        console.log("User closed the login popup");
-                        return;
-                    }
-                    
-                    console.error("Google Auth Error:", error);
-                    alert("Login failed. Please try again.");
-                }
-            });
+                });
+            } catch (e) {
+                console.error("Initialization Error:", e);
+            }
         }
     };
 
@@ -89,11 +103,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     }, 500);
 
     return () => clearInterval(intervalId);
-  }, [onLogin]);
+  }, [onLogin, clientId]);
 
   const handleGoogleLogin = () => {
     if (!tokenClient.current) {
-        alert("Google Sign-In is still loading. Please check your internet connection and try again.");
+        alert("Google Sign-In is initializing. Please wait a moment or check your Client ID configuration.");
         return;
     }
     
@@ -101,6 +115,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     // Requesting access token triggers the popup. 
     // This MUST be called directly from the user event handler.
     tokenClient.current.requestAccessToken();
+  };
+
+  const handleGuestLogin = () => {
+      onLogin({
+          id: 'guest',
+          name: 'Guest Dreamer',
+          email: 'guest@example.com',
+          photoUrl: 'https://ui-avatars.com/api/?name=Guest+Dreamer&background=random'
+      });
+  };
+
+  const handleSaveConfig = () => {
+      localStorage.setItem('jk_client_id', clientId);
+      window.location.reload(); // Reload to ensure clean initialization
   };
 
   return (
@@ -114,7 +142,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <button
                 onClick={handleGoogleLogin}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-white font-medium py-3.5 px-4 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed group"
+                className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-white font-medium py-3.5 px-4 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed group relative overflow-hidden"
             >
                 {isLoading ? (
                     <div className="w-5 h-5 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin"></div>
@@ -142,6 +170,62 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     </>
                 )}
             </button>
+
+            <button
+                onClick={handleGuestLogin}
+                className="w-full flex items-center justify-center gap-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium py-3.5 px-4 rounded-xl transition-all"
+            >
+                <LogIn className="w-5 h-5" />
+                <span>Continue as Guest</span>
+            </button>
+            
+            <div className="pt-4 flex justify-center">
+                <button 
+                    onClick={() => setShowConfig(!showConfig)}
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1"
+                >
+                    <Settings className="w-3 h-3" />
+                    {showConfig ? 'Hide Configuration' : 'Configure Client ID'}
+                </button>
+            </div>
+
+            {showConfig && (
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-left text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                        Google Client ID
+                    </label>
+                    <input 
+                        type="text" 
+                        value={clientId}
+                        onChange={(e) => setClientId(e.target.value)}
+                        className="w-full p-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg mb-2 focus:ring-1 focus:ring-red-500 outline-none"
+                    />
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={handleSaveConfig}
+                            className="flex-1 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                            Save & Reload
+                        </button>
+                        <button 
+                            onClick={() => {
+                                setClientId(DEFAULT_CLIENT_ID);
+                                localStorage.removeItem('jk_client_id');
+                                window.location.reload();
+                            }}
+                            className="px-3 py-1.5 bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-lg hover:bg-gray-300 transition-colors"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                    <div className="mt-3 text-[10px] text-gray-400 text-left flex items-start gap-1">
+                        <HelpCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                        <p>
+                           To fix "Invalid Request" or "Origin Mismatch", create a Client ID in Google Cloud Console, add your current domain to "Authorized JavaScript origins", and paste the ID here.
+                        </p>
+                    </div>
+                </div>
+            )}
             
             <div className="relative flex py-2 items-center">
                 <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
