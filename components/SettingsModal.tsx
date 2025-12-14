@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, Snowflake, LogOut, FileDigit, Smartphone } from 'lucide-react';
+import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone } from 'lucide-react';
 import { Theme } from '../types';
 import { driveService } from '../services/driveService';
 import { BucketItem } from '../types';
@@ -117,7 +117,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
         }`}
       >
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${colorClass}`}>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${colorClass}`}>
             {icon}
         </div>
         <span className="text-xs font-medium capitalize truncate w-full text-center">{label}</span>
@@ -181,9 +181,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {renderThemeOption('light', 'Light', <Sun className="w-5 h-5 text-yellow-500" />, 'bg-yellow-100')}
                     {renderThemeOption('dark', 'Dark', <Moon className="w-5 h-5 text-indigo-500" />, 'bg-indigo-100')}
                     {renderThemeOption('system', 'System', <Monitor className="w-5 h-5 text-gray-500" />, 'bg-gray-100')}
-                    {renderThemeOption('marvel', 'Marvel', <span className="text-lg">🛡️</span>, 'bg-red-100')}
-                    {renderThemeOption('batman', 'Batman', <span className="text-lg">🦇</span>, 'bg-gray-800 text-yellow-400')}
-                    {renderThemeOption('elsa', 'Frozen', <Snowflake className="w-5 h-5 text-cyan-500" />, 'bg-cyan-100')}
+                    
+                    {renderThemeOption('marvel', 'Marvel', 
+                        <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                            <circle cx="12" cy="12" r="12" fill="#B91C1C" />
+                            <circle cx="12" cy="12" r="9.33" fill="#FFFFFF" />
+                            <circle cx="12" cy="12" r="6.66" fill="#B91C1C" />
+                            <circle cx="12" cy="12" r="4" fill="#1D4ED8" />
+                            <polygon points="12,8.5 13,11 15.5,11 13.5,12.5 14,15 12,13.5 10,15 10.5,12.5 8.5,11 11,11" fill="#FFFFFF" />
+                        </svg>, 
+                        'bg-red-100'
+                    )}
+                    
+                    {renderThemeOption('batman', 'Batman', 
+                        <div className="w-full h-full flex items-center justify-center p-0.5">
+                           <svg viewBox="0 0 100 60" fill="none" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+                                <ellipse cx="50" cy="30" rx="46" ry="26" fill="#FFD700" stroke="#000000" strokeWidth="3" />
+                                <path fill="#000000" d="M50 33 C50 33, 52 28, 54 27 C 56 26, 58 25, 58 25 C 58 25, 59 24, 60 25 C 61 26, 60.5 27, 60.5 27 C 60.5 27, 64 26.5, 68 26.5 C 72 26.5, 78 27.5, 80 28.5 C 82 29.5, 86 33, 86 33 C 86 33, 86 30, 85 29 C 84 28, 83 26, 83 26 C 83 26, 89 29, 93 34 C 97 39, 97 43, 97 43 C 97 43, 95 41, 91 40 C 87 39, 84 40, 84 40 C 84 40, 86 42, 86 44 C 86 46, 85 49, 83 52 C 81 55, 78 57, 74 57 C 70 57, 68 55, 66 54 C 64 53, 63 52, 62 52 C 61 52, 60 53, 58 54 C 56 55, 54 57, 50 57 C 46 57, 44 54, 42 54 C 40 53, 39 52, 38 52 C 37 52, 36 53, 34 54 C 32 55, 30 57, 26 57 C 22 57, 19 55, 17 52 C 15 49, 14 46, 14 44 C 14 42, 16 40, 16 40 C 16 40, 13 39, 9 40 C 5 41, 3 43, 3 43 C 3 43, 3 39, 7 34 C 11 29, 17 26, 17 26 C 17 26, 16 28, 15 29 C 14 30, 14 33, 14 33 C 14 33, 18 29.5, 20 28.5 C 22 27.5, 28 26.5, 32 26.5 C 36 26.5, 39.5 27, 39.5 27 C 39.5 27, 39 26, 40 25 C 41 24, 42 25, 42 25 C 42 25, 44 26, 46 27 C 48 28, 50 33, 50 33 Z" />
+                            </svg>
+                        </div>, 
+                        'bg-gray-800'
+                    )}
+                    
+                    {renderThemeOption('elsa', 'Frozen', 
+                         <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                            <circle cx="12" cy="12" r="12" fill="#06b6d4" />
+                            <circle cx="12" cy="12" r="10.5" fill="none" stroke="#a5f3fc" strokeWidth="0.5" />
+                            <g stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round">
+                                <path d="M12 4V20" />
+                                <path d="M4 12H20" />
+                                <path d="M6.34 6.34L17.66 17.66" />
+                                <path d="M6.34 17.66L17.66 6.34" />
+                                <path d="M12 4L10 6" /> <path d="M12 4L14 6" />
+                                <path d="M12 20L10 18" /> <path d="M12 20L14 18" />
+                                <path d="M4 12L6 10" /> <path d="M4 12L6 14" />
+                                <path d="M20 12L18 10" /> <path d="M20 12L18 14" />
+                                <path d="M6.34 6.34L8.5 7" /> <path d="M6.34 6.34L7 8.5" />
+                                <path d="M17.66 6.34L15.5 7" /> <path d="M17.66 6.34L17 8.5" />
+                                <path d="M6.34 17.66L8.5 17" /> <path d="M6.34 17.66L7 15.5" />
+                                <path d="M17.66 17.66L15.5 17" /> <path d="M17.66 17.66L17 15.5" />
+                            </g>
+                        </svg>, 
+                        'bg-cyan-100'
+                    )}
                 </div>
               </div>
 

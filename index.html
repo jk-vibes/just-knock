@@ -58,83 +58,75 @@
       }
       
       /* --- MARVEL THEME --- */
-      /* Palette: Red #E62429, Dark Blue #001D4A, Blue #0064D2, Silver #F0F0F0, Black #202020 */
+      /* Palette based on Captain America Shield */
+      /* Red: #dc2626, Blue: #1e3a8a, White: #FFFFFF, Silver: #f8fafc */
       
       [data-theme='marvel'] body {
-        background-color: #F0F2F5 !important; /* Silver/Light Grey */
-        color: #202020;
+        background-color: #f8fafc !important; /* Slate-50 */
+        color: #1e293b;
       }
 
-      /* Header: Deep Dark Blue/Black */
+      /* Header: Captain America Blue */
       [data-theme='marvel'] header { 
-        background-color: #0F172A !important; 
-        border-bottom: 3px solid #E62429 !important; /* Signature Red Border */
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        background-color: #1e3a8a !important; /* Blue-900 */
+        border-bottom: 4px solid #dc2626 !important; /* Red-600 */
+        box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);
       }
+      /* Header Text/Icons */
       [data-theme='marvel'] header .text-gray-900,
       [data-theme='marvel'] header .text-gray-800,
       [data-theme='marvel'] header .text-gray-500,
       [data-theme='marvel'] header button svg {
         color: #FFFFFF !important;
       }
-      /* Header Buttons */
       [data-theme='marvel'] header button.bg-gray-100 {
-        background-color: rgba(255, 255, 255, 0.1) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
         color: #fff !important;
       }
-      /* Logo Text override in header */
-      [data-theme='marvel'] header text {
-        fill: #FFFFFF !important;
-      }
-      [data-theme='marvel'] header path[fill="#ef4444"] {
-        fill: #E62429 !important;
-      }
 
-      /* Cards & Containers */
+      /* Cards */
       [data-theme='marvel'] .bg-white { 
         background-color: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
-        /* Subtle Red/Blue accent on left border for cards */
-        border-left: 4px solid #0064D2 !important; 
+        border: 1px solid #e2e8f0 !important;
+        border-left: 4px solid #1d4ed8 !important; /* Blue accent */
       }
       
-      /* Primary Actions (FAB, Add Buttons): Marvel Red */
+      /* Primary Actions - Blue with Red glow */
       [data-theme='marvel'] .bg-red-600,
       [data-theme='marvel'] .bg-gradient-to-br,
       [data-theme='marvel'] .bg-gradient-to-r {
-        background-image: none !important;
-        background-color: #E62429 !important;
-        box-shadow: 0 4px 14px 0 rgba(230, 36, 41, 0.39) !important;
+        background-image: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important; /* Blue Gradient */
+        background-color: #1d4ed8 !important;
+        box-shadow: 0 4px 14px 0 rgba(29, 78, 216, 0.4) !important;
       }
-      
-      /* Selection/Active States: Comic Blue */
+
+      /* Active States */
       [data-theme='marvel'] .bg-red-50 { 
-        background-color: #EBF8FF !important; /* Light Blue */
-        color: #0064D2 !important; /* Blue Text */
-        border-color: #90CDF4 !important;
+        background-color: #eff6ff !important; /* Blue-50 */
+        color: #1d4ed8 !important; /* Blue-700 */
+        border-color: #bfdbfe !important;
       }
-      
+
       /* Text Colors */
       [data-theme='marvel'] .text-red-600,
       [data-theme='marvel'] .text-red-500 { 
-        color: #E62429 !important; 
+        color: #dc2626 !important; /* Red-600 */
       }
       
-      /* Interest Tags: Dark Accent */
+      /* Interest Tags */
       [data-theme='marvel'] .rounded-full.bg-red-50 {
-        background-color: #202020 !important;
-        color: #FFFFFF !important;
-        border: 1px solid #E62429 !important;
+        background-color: #fef2f2 !important; /* Red-50 */
+        color: #b91c1c !important; /* Red-700 */
+        border: 1px solid #fecaca !important;
       }
 
       /* Icons */
-      [data-theme='marvel'] .text-gray-400 { color: #94a3b8 !important; }
-      [data-theme='marvel'] svg.text-red-500 { color: #E62429 !important; }
+      [data-theme='marvel'] svg.text-red-500 { color: #dc2626 !important; }
 
       /* Modals */
       [data-theme='marvel'] .bg-white.rounded-2xl {
-        border: 2px solid #E62429 !important;
+        border: 2px solid #1e3a8a !important; /* Blue Border */
       }
 
 

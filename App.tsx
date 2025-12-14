@@ -5,10 +5,10 @@ import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
 import { LoginScreen } from './components/LoginScreen';
-import { MapView } from './components/MapView';
-import { ChangelogModal } from './components/ChangelogModal';
-import { CompleteDateModal } from './components/CompleteDateModal';
 import { TimelineView } from './components/TimelineView';
+import { MapView } from './components/MapView';
+import { CompleteDateModal } from './components/CompleteDateModal';
+import { ChangelogModal } from './components/ChangelogModal';
 import { BucketItem, BucketItemDraft, Coordinates, Theme, User } from './types';
 import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance, speak, getDistanceSpeech } from './utils/geo';
 import { MOCK_BUCKET_ITEMS, generateMockItems } from './utils/mockData';
@@ -40,7 +40,7 @@ const BucketLogo = ({ onClickVersion }: { onClickVersion: () => void }) => (
                 onClick={(e) => { e.stopPropagation(); onClickVersion(); }}
                 className="text-[8px] font-bold text-gray-400 hover:text-red-500 cursor-pointer bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm"
             >
-                v1.0
+                v1.2
             </button>
         </div>
         <span className="text-[9px] font-bold text-red-600 dark:text-red-500 tracking-widest leading-none mt-0.5 ml-0.5">just knock it</span>
@@ -412,6 +412,19 @@ export default function App() {
     return true;
   }).length;
 
+  // Calculate Fill Percentage (Pending / Total)
+  // We use global items to show how full the "Life Bucket" is with dreams to achieve.
+  const totalItems = items.length;
+  const globalPendingCount = items.filter(i => !i.completed).length;
+  const fillPercentage = totalItems > 0 ? (globalPendingCount / totalItems) * 100 : 0;
+
+  // Determine fill color based on theme
+  const getFillColor = () => {
+      if (theme === 'batman') return '#fbbf24'; // amber-400
+      if (theme === 'elsa') return '#06b6d4'; // cyan-500
+      return '#ef4444'; // red-500 (default/marvel)
+  };
+
   const filteredItems = items.filter(item => {
     if (filterStatus === 'pending' && item.completed) return false;
     if (filterStatus === 'completed' && !item.completed) return false;
@@ -642,6 +655,7 @@ export default function App() {
                     onDelete={handleDelete}
                     onEdit={handleEditClick}
                     proximityRange={proximityRange}
+                    theme={theme}
                     />
                 ))
                 )}
@@ -666,18 +680,34 @@ export default function App() {
             setEditingItem(null);
             setIsAddModalOpen(true);
         }}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-red-600 to-red-500 text-white rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center z-40 group"
+        className="fixed bottom-6 right-6 z-50 group transition-transform duration-200 hover:scale-110 active:scale-95 text-gray-700 dark:text-gray-200"
+        title={`${globalPendingCount} to knock out`}
       >
-        <Plus className="w-7 h-7 group-hover:rotate-90 transition-transform duration-300" />
-        
-        {/* Pending Count Badge */}
-        {pendingCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-6 w-6 z-50">
-                <span className="relative inline-flex rounded-full h-6 w-6 bg-white dark:bg-gray-900 border-2 border-red-500 dark:border-red-400 items-center justify-center shadow-sm">
-                    <span className="text-[10px] font-extrabold text-red-600 dark:text-red-400 leading-none">{pendingCount > 99 ? '99+' : pendingCount}</span>
-                </span>
+        <div className="relative w-12 h-12 filter drop-shadow-2xl">
+            {/* SVG Bucket Icon - Dynamic Liquid Fill - Thinner Stroke & Sharper Shape */}
+            <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="bucketFill" x1="0" x2="0" y1="1" y2="0">
+                        <stop offset={`${fillPercentage}%`} stopColor={getFillColor()} />
+                        <stop offset={`${fillPercentage}%`} stopColor="transparent" />
+                    </linearGradient>
+                </defs>
+                {/* Handle - Thinner stroke */}
+                <path d="M5 8C5 3 19 3 19 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                {/* Body - Sharper Trapezoid like JK Logo - Thinner stroke */}
+                <path d="M4 8H20L18 22H6L4 8Z" fill="url(#bucketFill)" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+            </svg>
+
+             {/* Plus Badge - Adjusted for smaller bucket */}
+            <div className="absolute -top-2 -right-2 bg-red-600 dark:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm">
+                <Plus className="w-4 h-4" strokeWidth={3} />
+            </div>
+
+            {/* Hover Tooltip */}
+            <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-gray-900 dark:bg-gray-800 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none shadow-lg translate-x-2 group-hover:translate-x-0">
+                {globalPendingCount} to knock out
             </span>
-        )}
+        </div>
       </button>
 
       {/* Add/Edit Modal */}

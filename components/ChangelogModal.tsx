@@ -34,19 +34,34 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
   ];
 
   const history = [
+      {
+        date: "Dec 14, 2025 (v1.2)",
+        changes: [
+            "New Liquid Bucket FAB: Visualizes pending dreams",
+            "UI Refinement: Sharper icons and thinner borders",
+            "Added 'Knock Out' count tooltip on hover",
+            "Performance improvements",
+            "Refined Themes: Introduced Marvel theme",
+            "Family Buckets"
+        ]
+      },
       { 
-          date: "Dec 7, 2025", 
+          date: "Dec 7, 2025 (v1.1)", 
           changes: [
               "Added Audio Radar (Text-to-Speech) for nearby alerts",
               "Increased Proximity Range to 2km",
               "Restructured Settings: New 'Data' tab",
-              "Refined Themes: Introduced Marvel theme",
               "Fixed Mock Data management"
           ] 
       },
       { 
-          date: "Dec 6, 2025", 
-          changes: ["Family Buckets", "Initial Release", "AI Magic Fill"] 
+          date: "Nov 30, 2025 (v1.0)", 
+          changes: [
+              "Initial Release", 
+              "AI Magic Fill", 
+              "Capture Wish lists with location tag",
+              "Conceptualized Idea"
+          ] 
       }
   ];
 
@@ -61,7 +76,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         </button>
 
         <div className="bg-gradient-to-br from-red-600 to-red-500 p-6 pt-8 text-center text-white shrink-0">
-            <h2 className="text-2xl font-bold mb-1">Just Knock v1.0</h2>
+            <h2 className="text-2xl font-bold mb-1">Just Knock v1.2</h2>
             <p className="text-red-100 text-sm opacity-90">What's New</p>
         </div>
 
@@ -101,7 +116,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
             </div>
 
             <div className="pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
-                <p className="text-[10px] text-gray-400">Build 2025.12.07 • Made with ❤️</p>
+                <p className="text-[10px] text-gray-400">Build 2025.12.14 • Made with ❤️</p>
             </div>
         </div>
       </div>
