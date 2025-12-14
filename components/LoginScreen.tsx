@@ -1,6 +1,6 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
+import { driveService } from '../services/driveService';
 
 interface LoginScreenProps {
   onLogin: (user: User) => void;
@@ -14,24 +14,93 @@ const BucketLogo = () => (
     </svg>
   );
 
+// Add global type for Google Identity Services
+declare global {
+    interface Window {
+        google: any;
+    }
+}
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const tokenClient = useRef<any>(null);
+
+  useEffect(() => {
+    const initializeGoogleAuth = () => {
+        if (window.google?.accounts?.oauth2 && !tokenClient.current) {
+            tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+                client_id: '482285261060-fe5mujd6kn3gos3k6kgoj0kjl63u0cr1.apps.googleusercontent.com',
+                scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+                callback: async (tokenResponse: any) => {
+                    if (tokenResponse.access_token) {
+                        // Store token for Drive operations
+                        driveService.setAccessToken(tokenResponse.access_token);
+                        
+                        // Fetch User Profile
+                        try {
+                            const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                            });
+                            
+                            if (!userInfoResponse.ok) throw new Error("Failed to fetch profile");
+                            
+                            const userInfo = await userInfoResponse.json();
+                            
+                            const user: User = {
+                                id: userInfo.sub,
+                                name: userInfo.name,
+                                email: userInfo.email,
+                                photoUrl: userInfo.picture
+                            };
+                            
+                            onLogin(user);
+                        } catch (error) {
+                            console.error("Login failed during profile fetch:", error);
+                            alert("Failed to retrieve user profile. Please try again.");
+                        }
+                    }
+                    setIsLoading(false);
+                },
+                error_callback: (error: any) => {
+                    setIsLoading(false);
+                    // Handle user closing the popup gracefully
+                    if (error.type === 'popup_closed') {
+                        console.log("User closed the login popup");
+                        return;
+                    }
+                    
+                    console.error("Google Auth Error:", error);
+                    alert("Login failed. Please try again.");
+                }
+            });
+        }
+    };
+
+    // Try immediately
+    initializeGoogleAuth();
+
+    // Retry if script hasn't loaded yet
+    const intervalId = setInterval(() => {
+        if (tokenClient.current) {
+            clearInterval(intervalId);
+        } else {
+            initializeGoogleAuth();
+        }
+    }, 500);
+
+    return () => clearInterval(intervalId);
+  }, [onLogin]);
 
   const handleGoogleLogin = () => {
+    if (!tokenClient.current) {
+        alert("Google Sign-In is still loading. Please check your internet connection and try again.");
+        return;
+    }
+    
     setIsLoading(true);
-    // Simulate network delay and successful Google Auth response
-    setTimeout(() => {
-        // Mock User Data with a real placeholder image so the profile pic updates
-        const mockUser: User = {
-            id: 'u_12345',
-            name: 'Jay Wanderer',
-            email: 'jay@example.com',
-            // Using a high-quality placeholder avatar to simulate a Google profile picture
-            photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100' 
-        };
-        onLogin(mockUser);
-        setIsLoading(false);
-    }, 1200);
+    // Requesting access token triggers the popup. 
+    // This MUST be called directly from the user event handler.
+    tokenClient.current.requestAccessToken();
   };
 
   return (
