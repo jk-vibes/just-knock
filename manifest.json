@@ -1,3 +1,4 @@
+
 {
   "name": "Just Knock",
   "short_name": "Just Knock",
@@ -11,8 +12,14 @@
     {
       "src": "/icon.svg",
       "type": "image/svg+xml",
-      "sizes": "any",
-      "purpose": "any maskable"
+      "sizes": "192x192 512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "maskable"
     }
   ]
 }
