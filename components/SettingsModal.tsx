@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone } from 'lucide-react';
+import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone, AlertCircle } from 'lucide-react';
 import { Theme } from '../types';
 import { driveService } from '../services/driveService';
 import { BucketItem } from '../types';
@@ -60,6 +61,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [restoreStatus, setRestoreStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [lastBackup, setLastBackup] = useState<string | null>(null);
 
+  const isGuest = !driveService.getAccessToken();
+
   useEffect(() => {
     if (isOpen) {
         setLastBackup(driveService.getLastBackupTime());
@@ -79,27 +82,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleBackup = async () => {
+    if (isGuest) {
+      alert("Please sign in with Google to use cloud backups.");
+      return;
+    }
     setBackupStatus('loading');
     const result = await driveService.backup(items);
     if (result.success) {
         setBackupStatus('success');
         setLastBackup(result.timestamp);
-        // Open Google Drive in new tab
-        window.open('https://drive.google.com', '_blank');
+        // Inform user
+        setTimeout(() => setBackupStatus('idle'), 3000);
     } else {
         setBackupStatus('error');
+        setTimeout(() => setBackupStatus('idle'), 3000);
     }
   };
 
   const handleRestore = async () => {
+    if (isGuest) {
+      alert("Please sign in with Google to restore from cloud.");
+      return;
+    }
     if (!onRestore) return;
     setRestoreStatus('loading');
     const result = await driveService.restore();
     if (result.success && result.items) {
         onRestore(result.items);
         setRestoreStatus('success');
+        setTimeout(() => setRestoreStatus('idle'), 3000);
     } else {
         setRestoreStatus('error');
+        setTimeout(() => setRestoreStatus('idle'), 3000);
     }
   };
   
@@ -314,6 +328,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                  {/* Cloud Backup Section */}
                  <div>
                     <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Cloud Backup</h3>
+                    
+                    {isGuest && (
+                      <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-xl mb-4 text-xs font-medium">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        Please Sign-In with Google to enable cloud features.
+                      </div>
+                    )}
+
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 mb-3">
                         <div className="flex items-start gap-3">
                             <Cloud className="w-6 h-6 text-blue-500 mt-1" />
@@ -332,35 +354,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={handleBackup}
-                            disabled={backupStatus === 'loading'}
-                            className="flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-medium hover:border-blue-500 dark:hover:border-blue-500 transition-all group"
+                            disabled={backupStatus === 'loading' || isGuest}
+                            className="flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-medium hover:border-blue-500 dark:hover:border-blue-500 transition-all group disabled:opacity-50"
                         >
                             {backupStatus === 'loading' ? (
                                 <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
                             ) : backupStatus === 'success' ? (
                                 <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            ) : backupStatus === 'error' ? (
+                                <AlertCircle className="w-5 h-5 text-red-500" />
                             ) : (
                                 <Upload className="w-5 h-5 text-gray-500 group-hover:text-blue-500" />
                             )}
-                            <span className={`text-xs ${backupStatus === 'success' ? 'text-green-600' : 'text-gray-700 dark:text-gray-200'}`}>
-                                {backupStatus === 'success' ? 'Backed Up' : 'Backup'}
+                            <span className={`text-xs ${backupStatus === 'success' ? 'text-green-600' : backupStatus === 'error' ? 'text-red-600' : 'text-gray-700 dark:text-gray-200'}`}>
+                                {backupStatus === 'success' ? 'Backed Up' : backupStatus === 'error' ? 'Failed' : 'Backup'}
                             </span>
                         </button>
 
                         <button
                             onClick={handleRestore}
-                            disabled={restoreStatus === 'loading'}
-                            className="flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-medium hover:border-green-500 dark:hover:border-green-500 transition-all group"
+                            disabled={restoreStatus === 'loading' || isGuest}
+                            className="flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-medium hover:border-green-500 dark:hover:border-green-500 transition-all group disabled:opacity-50"
                         >
                             {restoreStatus === 'loading' ? (
                                 <Loader2 className="w-5 h-5 animate-spin text-green-500" />
                             ) : restoreStatus === 'success' ? (
                                 <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            ) : restoreStatus === 'error' ? (
+                                <AlertCircle className="w-5 h-5 text-red-500" />
                             ) : (
                                 <Download className="w-5 h-5 text-gray-500 group-hover:text-green-500" />
                             )}
-                            <span className={`text-xs ${restoreStatus === 'success' ? 'text-green-600' : 'text-gray-700 dark:text-gray-200'}`}>
-                                {restoreStatus === 'success' ? 'Restored' : 'Restore'}
+                            <span className={`text-xs ${restoreStatus === 'success' ? 'text-green-600' : restoreStatus === 'error' ? 'text-red-600' : 'text-gray-700 dark:text-gray-200'}`}>
+                                {restoreStatus === 'success' ? 'Restored' : restoreStatus === 'error' ? 'Failed' : 'Restore'}
                             </span>
                         </button>
                     </div>

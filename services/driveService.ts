@@ -1,10 +1,10 @@
+
 import { BucketItem } from "../types";
 
 const CLOUD_META_KEY = 'jk_cloud_meta';
 const FILE_NAME = 'jk_bucket_list_backup.json';
 
-// In-memory storage for the session's access token.
-// In a production app, you might use more robust state management or handle token expiry/refresh.
+// Persistent token storage
 let accessToken: string | null = localStorage.getItem('jk_drive_token');
 
 export const driveService = {
@@ -13,8 +13,13 @@ export const driveService = {
     localStorage.setItem('jk_drive_token', token);
   },
 
+  getAccessToken: () => accessToken,
+
   backup: async (items: BucketItem[]): Promise<{ success: boolean; timestamp: string }> => {
-    if (!accessToken) return { success: false, timestamp: '' };
+    if (!accessToken) {
+      console.error("No access token available for backup");
+      return { success: false, timestamp: '' };
+    }
 
     try {
       // 1. Search for existing file
@@ -23,7 +28,10 @@ export const driveService = {
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       
-      if (!searchResponse.ok) throw new Error("Search failed");
+      if (!searchResponse.ok) {
+        if (searchResponse.status === 401) throw new Error("Unauthorized: Please sign in again.");
+        throw new Error(`Search failed: ${searchResponse.statusText}`);
+      }
       
       const searchData = await searchResponse.json();
       const fileId = searchData.files?.[0]?.id;
@@ -37,34 +45,46 @@ export const driveService = {
         description: `Just Knock Backup - ${timestamp}`
       };
 
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', new Blob([fileContent], { type: 'application/json' }));
+      // Constructing manual multipart/related body
+      const boundary = 'foo_bar_baz';
+      const delimiter = `\r\n--${boundary}\r\n`;
+      const closeDelimiter = `\r\n--${boundary}--`;
+
+      const multipartBody = 
+        delimiter +
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        fileContent +
+        closeDelimiter;
 
       let response;
-      if (fileId) {
-        // Update existing file
-        response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${accessToken}` },
-          body: form
-        });
-      } else {
-        // Create new file
-        response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${accessToken}` },
-          body: form
-        });
-      }
+      const url = fileId 
+        ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
+        : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
 
-      if (!response.ok) throw new Error("Upload failed");
+      response = await fetch(url, {
+        method: fileId ? 'PATCH' : 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: multipartBody
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        console.error("Drive upload error details:", errData);
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
 
       // Update local metadata
       localStorage.setItem(CLOUD_META_KEY, timestamp);
       return { success: true, timestamp };
     } catch (e) {
       console.error("Backup failed:", e);
+      alert(e instanceof Error ? e.message : "Backup failed. Ensure Google Drive API is enabled in your Google Console.");
       return { success: false, timestamp: '' };
     }
   },
@@ -85,7 +105,7 @@ export const driveService = {
       const file = searchData.files?.[0];
 
       if (!file) {
-        console.log("No backup file found");
+        alert("No backup file found in your Google Drive.");
         return { success: false };
       }
 
