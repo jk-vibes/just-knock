@@ -81,7 +81,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                         
                         console.error("Google Auth Error:", error);
                         // Detailed error for developers
-                        alert(`Login failed: ${error.message || JSON.stringify(error)}\n\nCheck if your Client ID is correct and the URL is added to 'Authorized JavaScript origins' in Google Cloud Console.`);
+                        alert(`Login failed: ${error.message || JSON.stringify(error)}\n\nCommon fixes:\n1. Check Client ID is correct.\n2. Ensure URL is in 'Authorized JavaScript origins'.\n3. If 'Testing' mode, add email to 'Test users'.`);
                     }
                 });
             } catch (e) {
@@ -220,9 +220,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     </div>
                     <div className="mt-3 text-[10px] text-gray-400 text-left flex items-start gap-1">
                         <HelpCircle className="w-3 h-3 shrink-0 mt-0.5" />
-                        <p>
-                           To fix "Invalid Request" or "Origin Mismatch", create a Client ID in Google Cloud Console, add your current domain to "Authorized JavaScript origins", and paste the ID here.
-                        </p>
+                        <div className="space-y-1">
+                            <p>To fix login issues:</p>
+                            <ul className="list-disc pl-3 space-y-0.5">
+                                <li><strong>Authorized Origin:</strong> Add your domain to "Authorized JavaScript origins" in Google Cloud.</li>
+                                <li><strong>Test Users:</strong> If App Status is "Testing", add your email to "Test users".</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             )}

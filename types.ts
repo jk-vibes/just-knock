@@ -10,6 +10,7 @@ export interface BucketItem {
   description: string;
   locationName?: string;
   coordinates?: Coordinates;
+  images?: string[]; // Array of image URLs
   completed: boolean;
   completedAt?: number; // Timestamp when item was completed
   createdAt: number;
@@ -24,6 +25,7 @@ export interface BucketItemDraft {
   locationName?: string;
   latitude?: number;
   longitude?: number;
+  images?: string[]; // Array of image URLs
   category?: string;
   interests?: string[];
   owner?: string;

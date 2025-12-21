@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock } from 'lucide-react';
+import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -8,6 +9,7 @@ import { TimelineView } from './components/TimelineView';
 import { MapView } from './components/MapView';
 import { CompleteDateModal } from './components/CompleteDateModal';
 import { ChangelogModal } from './components/ChangelogModal';
+import { ImageGalleryModal } from './components/ImageGalleryModal';
 import { BucketItem, BucketItemDraft, Coordinates, Theme, User } from './types';
 import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance, speak, getDistanceSpeech } from './utils/geo';
 import { MOCK_BUCKET_ITEMS, generateMockItems } from './utils/mockData';
@@ -87,13 +89,16 @@ export default function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [viewingItemImages, setViewingItemImages] = useState<BucketItem | null>(null);
   const [activeTab, setActiveTab] = useState<'list' | 'map'>('list');
   const [locating, setLocating] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
     return (localStorage.getItem(THEME_KEY) as Theme) || 'system';
   });
 
-  // Filter & View State
+  // Filter & Search State
+  const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
   const [filterOwner, setFilterOwner] = useState<string | null>(null); // null = All
   const [isCompact, setIsCompact] = useState(false);
@@ -295,6 +300,7 @@ export default function App() {
                 category: draft.category,
                 interests: draft.interests,
                 owner: draft.owner,
+                images: draft.images || item.images, // Preserve new images or keep old
                 // Update completion status and date if changed
                 completed: draft.isCompleted !== undefined ? draft.isCompleted : item.completed,
                 completedAt: draft.isCompleted ? draft.completedAt : (draft.isCompleted === false ? undefined : item.completedAt)
@@ -311,6 +317,7 @@ export default function App() {
             latitude: draft.latitude,
             longitude: draft.longitude
         } : undefined,
+        images: draft.images || [],
         completed: draft.isCompleted || false,
         createdAt: Date.now(), 
         completedAt: draft.isCompleted ? draft.completedAt : undefined,
@@ -421,7 +428,6 @@ export default function App() {
   }).length;
 
   // Calculate Fill Percentage (Pending / Total)
-  // We use global items to show how full the "Life Bucket" is with dreams to achieve.
   const totalItems = items.length;
   const globalPendingCount = items.filter(i => !i.completed).length;
   const fillPercentage = totalItems > 0 ? (globalPendingCount / totalItems) * 100 : 0;
@@ -434,10 +440,24 @@ export default function App() {
   };
 
   const filteredItems = items.filter(item => {
+    // 1. Search Filter (Global)
+    if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = (
+            item.title.toLowerCase().includes(query) ||
+            item.description.toLowerCase().includes(query) ||
+            (item.locationName && item.locationName.toLowerCase().includes(query)) ||
+            (item.category && item.category.toLowerCase().includes(query)) ||
+            (item.interests && item.interests.some(i => i.toLowerCase().includes(query)))
+        );
+        if (!matchesSearch) return false;
+    }
+
+    // 2. Status Filter
     if (filterStatus === 'pending' && item.completed) return false;
     if (filterStatus === 'completed' && !item.completed) return false;
     
-    // Owner filter
+    // 3. Owner Filter
     if (filterOwner) {
         if (filterOwner === 'Me') {
             if (item.owner && item.owner !== 'Me') return false;
@@ -487,6 +507,18 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-2">
+               {/* Search Icon Button */}
+              <button
+                onClick={() => {
+                    setIsSearchOpen(true);
+                    triggerHaptic('medium');
+                }}
+                className={`p-2.5 rounded-full transition-colors ${searchQuery ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                title="Search"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+
               <button 
                 onClick={() => {
                     setIsRadarOn(!isRadarOn);
@@ -537,6 +569,26 @@ export default function App() {
       <main className="flex-grow overflow-y-auto no-scrollbar w-full">
         <div className="max-w-2xl mx-auto px-4 py-2 space-y-2">
             
+            {/* Active Search Filter Chip */}
+            {searchQuery && (
+                <div className="px-1 mb-2 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl border border-red-100 dark:border-red-900/30">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            <Search className="w-4 h-4 text-red-500 shrink-0" />
+                            <span className="text-sm text-red-900 dark:text-red-100 truncate">
+                                Searching: <span className="font-bold">{searchQuery}</span>
+                            </span>
+                        </div>
+                        <button 
+                            onClick={() => { setSearchQuery(''); triggerHaptic('light'); }}
+                            className="p-1.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 transition-colors shrink-0"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Controls Toolbar: View Mode + Filters */}
             <div className="flex flex-wrap gap-2 justify-between items-center px-1 mb-2">
                 
@@ -638,12 +690,12 @@ export default function App() {
                 {filteredItems.length === 0 ? (
                 <div className="text-center py-20 opacity-60">
                     <div className="bg-gray-100 dark:bg-gray-800 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Clock className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                        {searchQuery ? <Search className="w-8 h-8 text-gray-400 dark:text-gray-500" /> : <Clock className="w-8 h-8 text-gray-400 dark:text-gray-500" />}
                     </div>
                     <p className="text-gray-500 dark:text-gray-400 font-medium">
-                        {filterStatus === 'all' ? 'Your bucket is empty.' : `No ${filterStatus} items found.`}
+                        {searchQuery ? 'No dreams found matching your search.' : filterStatus === 'all' ? 'Your bucket is empty.' : `No ${filterStatus} items found.`}
                     </p>
-                    {filterStatus === 'all' && <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Start adding your wildest dreams!</p>}
+                    {filterStatus === 'all' && !searchQuery && <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Start adding your wildest dreams!</p>}
                 </div>
                 ) : filterStatus === 'completed' ? (
                     <TimelineView 
@@ -662,6 +714,7 @@ export default function App() {
                     onToggleComplete={handleToggleComplete}
                     onDelete={handleDelete}
                     onEdit={handleEditClick}
+                    onViewImages={(item) => setViewingItemImages(item)}
                     proximityRange={proximityRange}
                     theme={theme}
                     />
@@ -669,7 +722,7 @@ export default function App() {
                 )}
             </div>
             ) : (
-            <MapView items={items} userLocation={userLocation} proximityRange={proximityRange} />
+            <MapView items={filteredItems} userLocation={userLocation} proximityRange={proximityRange} />
             )}
 
             {/* Footer Tagline (Inside Scroll View) */}
@@ -718,6 +771,95 @@ export default function App() {
         </div>
       </button>
 
+      {/* Search Modal */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsSearchOpen(false)}>
+            <div 
+                className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-2 duration-200 ring-1 ring-gray-900/5"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Search Header */}
+                <div className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                    <Search className="w-5 h-5 text-red-500 shrink-0" />
+                    <input 
+                        type="text"
+                        autoFocus
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search your bucket list..."
+                        className="flex-grow bg-transparent text-lg text-gray-900 dark:text-white placeholder-gray-400 outline-none"
+                    />
+                    <button 
+                        onClick={() => {
+                            if (searchQuery) setSearchQuery('');
+                            else setIsSearchOpen(false);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Results List */}
+                <div className="max-h-[50vh] overflow-y-auto p-2 scroll-py-2">
+                    {/* Empty State */}
+                    {!searchQuery && (
+                        <div className="py-8 text-center text-gray-400 text-sm">
+                            Type to start searching...
+                        </div>
+                    )}
+                    
+                    {/* No Results */}
+                    {searchQuery && filteredItems.length === 0 && (
+                        <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+                            No matching dreams found.
+                        </div>
+                    )}
+
+                    {/* List */}
+                    {searchQuery && filteredItems.map(item => (
+                         <button 
+                            key={item.id}
+                            onClick={() => {
+                                setIsSearchOpen(false);
+                            }}
+                            className="w-full text-left p-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center justify-between group transition-colors"
+                          >
+                              <div className="min-w-0">
+                                  <h4 className="font-semibold text-gray-800 dark:text-gray-200 truncate pr-2">
+                                    <span dangerouslySetInnerHTML={{
+                                        __html: item.title.replace(new RegExp(`(${searchQuery})`, 'gi'), '<span class="text-red-600 dark:text-red-400 font-bold">$1</span>')
+                                    }} />
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {item.locationName && (
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 truncate">
+                                            <MapIcon className="w-3 h-3" /> {item.locationName}
+                                        </span>
+                                    )}
+                                    {item.completed && (
+                                         <span className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1.5 rounded-full">
+                                            Done
+                                         </span>
+                                    )}
+                                  </div>
+                              </div>
+                              <ArrowLeft className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-red-500 -rotate-45" />
+                          </button>
+                    ))}
+                </div>
+                
+                {/* Footer Info */}
+                {searchQuery && filteredItems.length > 0 && (
+                    <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex justify-between">
+                         <span>{filteredItems.length} result(s)</span>
+                         <span>Press Enter to view all</span>
+                    </div>
+                )}
+            </div>
+        </div>
+      )}
+
       {/* Add/Edit Modal */}
       <AddItemModal
         isOpen={isAddModalOpen}
@@ -739,7 +881,8 @@ export default function App() {
             interests: editingItem.interests,
             owner: editingItem.owner,
             isCompleted: editingItem.completed,
-            completedAt: editingItem.completedAt
+            completedAt: editingItem.completedAt,
+            images: editingItem.images
         } : null}
         mode={editingItem ? 'edit' : 'add'}
       />
@@ -750,6 +893,12 @@ export default function App() {
         onClose={() => setCompletingItem(null)}
         onConfirm={handleConfirmCompletion}
         itemTitle={completingItem?.title}
+      />
+
+      {/* Image Gallery Modal */}
+      <ImageGalleryModal 
+        item={viewingItemImages}
+        onClose={() => setViewingItemImages(null)}
       />
 
       {/* Settings Modal */}

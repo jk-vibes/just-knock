@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, CheckCircle2, Circle } from 'lucide-react';
+import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, CheckCircle2, Circle, Image as ImageIcon } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem } from '../services/geminiService';
 import { BucketItemDraft } from '../types';
 
@@ -91,7 +91,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleSuggest = async () => {
     setIsSuggesting(true);
-    // Pass the current input as context to the suggestion engine
     const result = await suggestBucketItem(categories, input);
     setDraft(result);
     setInput(result.title);
@@ -100,7 +99,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleConfirm = () => {
     if (draft) {
-      // Convert date string back to timestamp
       const completedTimestamp = isCompleted ? new Date(completedDate).getTime() : undefined;
 
       onAdd({
@@ -123,11 +121,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     }
   };
 
-  // If editing, we allow modifying the draft details directly
   const handleDraftChange = (field: keyof BucketItemDraft, value: any) => {
       if (draft) {
           setDraft({ ...draft, [field]: value });
       }
+  };
+
+  // Helper to get image array
+  const getDraftImages = () => {
+      if (draft?.images && draft.images.length > 0) return draft.images;
+      if ((draft as any)?.imageUrl) return [(draft as any).imageUrl];
+      return [];
   };
 
   return (
@@ -192,14 +196,37 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             <div className="space-y-3">
               {/* Draft Editor / AI Result Card */}
               <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-900/30 space-y-2">
+                
+                {/* Image Preview List */}
+                {getDraftImages().length > 0 && (
+                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                         {getDraftImages().map((img: string, idx: number) => (
+                             <div key={idx} className="w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-red-200 dark:border-red-800">
+                                <img src={img} alt="Draft" className="w-full h-full object-cover" />
+                             </div>
+                         ))}
+                     </div>
+                )}
+
+                <div className="flex items-start gap-3">
+                   <div className="flex-1 min-w-0 space-y-1">
+                        {mode === 'edit' ? (
+                            <>
+                                <input 
+                                    value={draft.title} 
+                                    onChange={(e) => handleDraftChange('title', e.target.value)}
+                                    className="w-full font-semibold text-red-900 dark:text-red-200 text-lg bg-transparent border-b border-red-200 dark:border-red-800 focus:outline-none focus:border-red-500"
+                                    placeholder="Title"
+                                />
+                            </>
+                        ) : (
+                            <h3 className="font-semibold text-red-900 dark:text-red-200 text-lg">{draft.title}</h3>
+                        )}
+                   </div>
+                </div>
+
                 {mode === 'edit' ? (
                     <>
-                         <input 
-                            value={draft.title} 
-                            onChange={(e) => handleDraftChange('title', e.target.value)}
-                            className="w-full font-semibold text-red-900 dark:text-red-200 text-lg bg-transparent border-b border-red-200 dark:border-red-800 focus:outline-none focus:border-red-500"
-                            placeholder="Title"
-                         />
                          <textarea 
                             value={draft.description}
                             onChange={(e) => handleDraftChange('description', e.target.value)}
@@ -219,7 +246,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     </>
                 ) : (
                     <>
-                        <h3 className="font-semibold text-red-900 dark:text-red-200 text-lg">{draft.title}</h3>
                         <p className="text-red-700 dark:text-red-300 text-sm mt-1">{draft.description}</p>
                         {draft.locationName && (
                         <div className="flex items-center gap-2 mt-2 text-xs font-medium text-red-600 dark:text-red-400 bg-white/50 dark:bg-black/20 w-fit px-2 py-1 rounded-full">
@@ -240,7 +266,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                         Status
                     </label>
                     <div className="grid grid-cols-2 gap-3">
-                        {/* Pending Radio */}
                         <div 
                             onClick={() => setIsCompleted(false)}
                             className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 flex items-center gap-3 ${!isCompleted ? 'border-gray-500 bg-gray-50 dark:bg-gray-700' : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
@@ -251,7 +276,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                             <span className={`text-sm font-semibold ${!isCompleted ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>Still Dreaming</span>
                         </div>
 
-                        {/* Completed Radio */}
                         <div 
                             onClick={() => setIsCompleted(true)}
                             className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 flex flex-col gap-2 ${isCompleted ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
@@ -263,7 +287,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                                 <span className={`text-sm font-semibold ${isCompleted ? 'text-green-900 dark:text-green-100' : 'text-gray-500 dark:text-gray-400'}`}>Knocked Out!</span>
                             </div>
 
-                            {/* Embedded Date Picker */}
                             {isCompleted && (
                                 <div className="w-full pt-2 mt-1 border-t border-green-200 dark:border-green-800/50 animate-in fade-in slide-in-from-top-1">
                                     <div className="flex items-center gap-2 mb-1">
@@ -283,7 +306,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     </div>
                 </div>
 
-                {/* Family Selection - Only show if family members exist */}
                 {familyMembers.length > 0 && (
                     <div>
                         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block flex items-center gap-2">
@@ -323,7 +345,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <Tag className="w-3 h-3" /> Interests
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {/* Combine AI suggested interests and user's available interests */}
                     {Array.from(new Set([...availableInterests, ...selectedInterests])).map(interest => (
                       <button
                         key={interest}
@@ -341,7 +362,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                 <button
                   onClick={onClose}

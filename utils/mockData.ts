@@ -1,6 +1,13 @@
 
 import { BucketItem } from "../types";
 
+// Helper to generate consistent images with variations
+const getImgs = (keyword: string) => [
+    `https://image.pollinations.ai/prompt/${encodeURIComponent(keyword)}?width=600&height=400&nologo=true&seed=1`,
+    `https://image.pollinations.ai/prompt/Cinematic shot of ${encodeURIComponent(keyword)}?width=600&height=400&nologo=true&seed=2`,
+    `https://image.pollinations.ai/prompt/Close up detail of ${encodeURIComponent(keyword)}?width=600&height=400&nologo=true&seed=3`
+];
+
 // --- EXISTING CURATED DATA (Kept for quality) ---
 const CURATED_ITEMS: BucketItem[] = [
   // --- INDIA: TEMPLES & SPIRITUAL ---
@@ -10,6 +17,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "Seek blessings at the Sri Venkateswara Temple, located in the hill town of Tirumala.",
     locationName: "Tirumala, Andhra Pradesh",
     coordinates: { latitude: 13.6833, longitude: 79.3472 },
+    images: getImgs("Tirupati Balaji Temple"),
     category: "Culture",
     interests: ["Temple", "Spiritual", "Pilgrimage"],
     completed: false,
@@ -21,6 +29,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "Marvel at the colorful gopurams of this historic Hindu temple on the southern bank of the Vaigai River.",
     locationName: "Madurai, Tamil Nadu",
     coordinates: { latitude: 9.9195, longitude: 78.1193 },
+    images: getImgs("Meenakshi Amman Temple"),
     category: "Culture",
     interests: ["Temple", "Architecture", "History"],
     completed: false,
@@ -32,6 +41,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "Experience the spiritual energy of the Ganga Aarti and visit one of the 12 Jyotirlingas.",
     locationName: "Varanasi, Uttar Pradesh",
     coordinates: { latitude: 25.3109, longitude: 83.0107 },
+    images: getImgs("Ganga Aarti Varanasi"),
     category: "Culture",
     interests: ["Spiritual", "River", "History"],
     completed: false,
@@ -43,6 +53,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "Visit the holiest Gurdwara of Sikhism and participate in the Langar.",
     locationName: "Amritsar, Punjab",
     coordinates: { latitude: 31.6200, longitude: 74.8765 },
+    images: getImgs("Golden Temple Amritsar"),
     category: "Culture",
     interests: ["Spiritual", "Peace", "Community"],
     completed: true,
@@ -55,6 +66,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "Explore the 13th-century temple designed as a chariot of the Sun God.",
     locationName: "Konark, Odisha",
     coordinates: { latitude: 19.8876, longitude: 86.0945 },
+    images: getImgs("Konark Sun Temple"),
     category: "Culture",
     interests: ["Architecture", "History", "Unesco"],
     completed: false,
@@ -67,6 +79,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "Take the ferry to Liberty Island.",
     locationName: "New York, NY",
     coordinates: { latitude: 40.6892, longitude: -74.0445 },
+    images: getImgs("Statue of Liberty"),
     category: "Travel",
     interests: ["Iconic", "History", "Boat"],
     completed: false,
@@ -78,6 +91,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "Walk or bike across the bridge.",
     locationName: "San Francisco, CA",
     coordinates: { latitude: 37.8199, longitude: -122.4783 },
+    images: getImgs("Golden Gate Bridge"),
     category: "Travel",
     interests: ["Architecture", "Views", "Iconic"],
     completed: true,
@@ -90,6 +104,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "See the presidents carved into the Black Hills.",
     locationName: "Keystone, SD",
     coordinates: { latitude: 43.8791, longitude: -103.4591 },
+    images: getImgs("Mount Rushmore"),
     category: "Travel",
     interests: ["History", "Monument", "Mountains"],
     completed: false,
@@ -101,6 +116,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "Watch the sunset at Mather Point.",
     locationName: "Arizona",
     coordinates: { latitude: 36.0544, longitude: -112.1401 },
+    images: getImgs("Grand Canyon Sunset"),
     category: "Nature",
     interests: ["Views", "Hiking", "Wonder"],
     completed: false,
@@ -112,6 +128,7 @@ const CURATED_ITEMS: BucketItem[] = [
     description: "Eat powdered sugar donuts and chicory coffee.",
     locationName: "New Orleans, LA",
     coordinates: { latitude: 29.9574, longitude: -90.0618 },
+    images: getImgs("Beignets Coffee New Orleans"),
     category: "Food",
     interests: ["Sweet", "Coffee", "Jazz"],
     completed: false,
@@ -175,6 +192,9 @@ const generateItem = (index: number): BucketItem => {
   const activity = ACTIVITIES[Math.floor(Math.random() * ACTIVITIES.length)];
   const isCompleted = Math.random() > 0.8; // 20% chance of being completed
   const createdTime = Date.now() - Math.floor(Math.random() * 31536000000); // Created within last year
+  const seed = Math.floor(Math.random() * 1000);
+  
+  const keyword = `${activity.noun} in ${city.name}`;
   
   return {
     id: `gen-${index}`,
@@ -185,6 +205,7 @@ const generateItem = (index: number): BucketItem => {
       latitude: city.lat + randomOffset(),
       longitude: city.lng + randomOffset()
     },
+    images: getImgs(keyword),
     category: activity.cat,
     interests: [...activity.tags, city.country],
     completed: isCompleted,
