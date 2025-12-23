@@ -37,6 +37,14 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   const history = [
       {
+          date: "Latest Update (v1.5)",
+          changes: [
+              "Automatic Google Drive Backup (Every 24h)",
+              "Restored Icon-based Filter Toolbar (Todo/Done)",
+              "Silent Backup Mode"
+          ]
+      },
+      {
         date: "Dec 23, 2025 (v1.4)",
         changes: [
             "Added timeline view in Home screen",
@@ -100,7 +108,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
                 <Star className="absolute bottom-2 right-10 w-6 h-6 text-yellow-300 animate-pulse" />
             </div>
 
-            <h2 className="text-lg font-bold mb-0.5 relative z-10">Just Knock v1.4</h2>
+            <h2 className="text-lg font-bold mb-0.5 relative z-10">Just Knock v1.5</h2>
             <p className="text-red-100 text-[10px] font-medium opacity-90 relative z-10 uppercase tracking-widest">
                 {activeTab === 'highlights' ? "Feature Highlights" : "Version History"}
             </p>

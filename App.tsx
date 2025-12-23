@@ -42,7 +42,7 @@ const BucketLogo = ({ onClickVersion }: { onClickVersion: () => void }) => (
                 onClick={(e) => { e.stopPropagation(); onClickVersion(); }}
                 className="text-[8px] font-bold text-gray-400 hover:text-red-500 cursor-pointer bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm"
             >
-                v1.4
+                v1.5
             </button>
         </div>
         <span className="logo-text text-[9px] font-bold text-red-600 dark:text-red-500 tracking-widest leading-none mt-0.5 ml-0.5">just knock it</span>
@@ -758,21 +758,24 @@ export default function App() {
                         <div className="bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm flex gap-0.5">
                             <button
                                 onClick={() => { setFilterStatus('all'); triggerHaptic('light'); }}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${filterStatus === 'all' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                                className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'all' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                title="All"
                             >
-                                All
+                                <LayoutList className="w-4 h-4" />
                             </button>
                             <button
                                 onClick={() => { setFilterStatus('pending'); triggerHaptic('light'); }}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${filterStatus === 'pending' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                                className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'pending' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                title="To Do"
                             >
-                                To Do
+                                <Circle className="w-4 h-4" />
                             </button>
                             <button
                                 onClick={() => { setFilterStatus('completed'); triggerHaptic('light'); }}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${filterStatus === 'completed' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                                className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'completed' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                title="Done"
                             >
-                                Done
+                                <CheckCircle2 className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
