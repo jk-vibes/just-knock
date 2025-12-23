@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { X, CheckCircle2, Rocket, Map, Cloud, Sparkles, History, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, CheckCircle2, Rocket, Map, Cloud, Sparkles, History, Users, Star } from 'lucide-react';
 
 interface ChangelogModalProps {
   isOpen: boolean;
@@ -8,6 +8,8 @@ interface ChangelogModalProps {
 }
 
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose }) => {
+  const [activeTab, setActiveTab] = useState<'highlights' | 'history'>('highlights');
+
   if (!isOpen) return null;
 
   const features = [
@@ -81,56 +83,119 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-100 relative h-[80vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-100 relative h-[60vh] flex flex-col">
+        {/* Close Button */}
         <button 
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors z-10"
+            className="absolute top-3 right-3 p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors z-20"
         >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
         </button>
 
-        <div className="bg-gradient-to-br from-red-600 to-red-500 p-6 pt-8 text-center text-white shrink-0">
-            <h2 className="text-2xl font-bold mb-1">Just Knock v1.4</h2>
-            <p className="text-red-100 text-sm opacity-90">What's New</p>
+        {/* Header - Fixed & Compact */}
+        <div className="bg-gradient-to-br from-red-600 to-red-500 p-4 text-center text-white shrink-0 relative overflow-hidden">
+             {/* Decorative Background Elements */}
+            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                <Rocket className="absolute top-2 left-4 w-8 h-8 transform -rotate-12" />
+                <Star className="absolute bottom-2 right-10 w-6 h-6 text-yellow-300 animate-pulse" />
+            </div>
+
+            <h2 className="text-lg font-bold mb-0.5 relative z-10">Just Knock v1.4</h2>
+            <p className="text-red-100 text-[10px] font-medium opacity-90 relative z-10 uppercase tracking-widest">
+                {activeTab === 'highlights' ? "Feature Highlights" : "Version History"}
+            </p>
         </div>
 
-        <div className="p-6 overflow-y-auto no-scrollbar space-y-8">
-            <div className="space-y-4">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Features Highlight</h3>
-                {features.map((feat, idx) => (
-                    <div key={idx} className="flex gap-3 items-start">
-                        <div className="mt-0.5 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg shrink-0">
-                            {feat.icon}
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{feat.title}</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{feat.desc}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
+        {/* Body - Flex Row for Vertical Tabs */}
+        <div className="flex flex-1 overflow-hidden">
             
-            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                    <History className="w-4 h-4" /> Version History
-                </h3>
-                <div className="space-y-4">
-                    {history.map((log, idx) => (
-                        <div key={idx} className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
-                            <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600"></div>
-                            <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">{log.date}</p>
-                            <ul className="list-none space-y-1">
-                                {log.changes.map((change, cIdx) => (
-                                    <li key={cIdx} className="text-xs text-gray-500 dark:text-gray-400">• {change}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
-                </div>
+            {/* Left Vertical Tabs */}
+            <div className="w-14 bg-gray-50 dark:bg-gray-900/50 border-r border-gray-100 dark:border-gray-700 flex flex-col items-center py-4 gap-4 shrink-0 z-10">
+                <button
+                    onClick={() => setActiveTab('highlights')}
+                    className={`flex flex-col items-center gap-1 group relative w-full ${activeTab === 'highlights' ? 'text-red-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                >
+                    <div className={`p-2 rounded-xl transition-all ${activeTab === 'highlights' ? 'bg-red-100 dark:bg-red-900/30 shadow-sm' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}`}>
+                        <Sparkles className="w-5 h-5" />
+                    </div>
+                    <span className="text-[9px] font-bold">New</span>
+                    
+                    {/* Active Indicator Bar */}
+                    {activeTab === 'highlights' && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-red-500 rounded-r-full" />
+                    )}
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('history')}
+                    className={`flex flex-col items-center gap-1 group relative w-full ${activeTab === 'history' ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                >
+                    <div className={`p-2 rounded-xl transition-all ${activeTab === 'history' ? 'bg-blue-100 dark:bg-blue-900/30 shadow-sm' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}`}>
+                        <History className="w-5 h-5" />
+                    </div>
+                    <span className="text-[9px] font-bold">Log</span>
+
+                    {/* Active Indicator Bar */}
+                    {activeTab === 'history' && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-blue-500 rounded-r-full" />
+                    )}
+                </button>
             </div>
 
-            <div className="pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
-                <p className="text-[10px] text-gray-400">Build 2025.12.23 • Made with ❤️</p>
+            {/* Right Content Area */}
+            <div className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-gray-800 p-0 relative">
+                
+                {activeTab === 'highlights' && (
+                    <div className="p-4 space-y-4 animate-in slide-in-from-right-4 fade-in duration-300">
+                         <div className="space-y-3">
+                            {features.map((feat, idx) => (
+                                <div key={idx} className="flex gap-3 items-start p-1.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <div className="mt-0.5 bg-white dark:bg-gray-700 p-1.5 rounded-lg shrink-0 shadow-sm border border-gray-100 dark:border-gray-600">
+                                        {feat.icon}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 dark:text-white text-xs">{feat.title}</h3>
+                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">{feat.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="text-center pt-4">
+                             <p className="text-[9px] text-gray-400">Enjoy the new updates!</p>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'history' && (
+                    <div className="p-4 animate-in slide-in-from-bottom-4 fade-in duration-300">
+                        <div className="relative border-l-2 border-gray-100 dark:border-gray-700 ml-2 space-y-6">
+                            {history.map((log, idx) => (
+                                <div key={idx} className="relative pl-5">
+                                    {/* Timeline Dot */}
+                                    <div className="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-blue-100 dark:bg-blue-900 border-2 border-blue-500"></div>
+                                    
+                                    <div className="flex flex-col gap-1 mb-2">
+                                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-md w-fit">
+                                            {log.date}
+                                        </span>
+                                    </div>
+                                    
+                                    <ul className="space-y-1.5">
+                                        {log.changes.map((change, cIdx) => (
+                                            <li key={cIdx} className="text-[10px] text-gray-600 dark:text-gray-300 flex items-start gap-2">
+                                                <span className="block w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600 mt-1 shrink-0"></span>
+                                                <span className="leading-relaxed">{change}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="pt-6 text-center">
+                            <p className="text-[9px] text-gray-400">That's how far we've come.</p>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
       </div>

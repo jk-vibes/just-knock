@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone, AlertCircle } from 'lucide-react';
+import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone, AlertCircle, Volume2 } from 'lucide-react';
 import { Theme } from '../types';
 import { driveService } from '../services/driveService';
 import { BucketItem } from '../types';
+import { sendNotification, speak } from '../utils/geo';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -117,6 +118,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
   
+  const handleTestNotification = () => {
+    const title = "Test Notification 📍";
+    const body = "Knock Knock! This is a test for your bucket list radar.";
+    sendNotification(title, body, 'test-radar');
+    speak(body);
+    alert("Sent! Check your notification center and ensure sound is on.");
+  };
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
@@ -259,9 +268,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             onChange={(e) => onProximityRangeChange(parseInt(e.target.value))}
                             className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-red-600"
                         />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                            Notify me when I am within this distance of a bucket list item.
-                        </p>
+                        <div className="flex justify-between items-center mt-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Notify when nearby a bucket item.
+                            </p>
+                            <button 
+                                onClick={handleTestNotification}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                            >
+                                <Volume2 className="w-3 h-3" /> Test
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

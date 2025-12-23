@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy } from 'lucide-react';
+import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -106,9 +106,14 @@ export default function App() {
   // Edit/Action State
   const [editingItem, setEditingItem] = useState<BucketItem | null>(null);
   const [completingItem, setCompletingItem] = useState<BucketItem | null>(null);
+  const [activeToast, setActiveToast] = useState<{title: string, message: string} | null>(null);
 
   // Keep track of notified items to avoid spamming
   const notifiedItems = useRef<Set<string>>(new Set());
+  
+  // Refs for watcher to access latest state without restarting
+  const itemsRef = useRef(items);
+  const proximityRangeRef = useRef(proximityRange);
 
   // Persistence Effects
   useEffect(() => {
@@ -118,6 +123,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    itemsRef.current = items;
   }, [items]);
 
   useEffect(() => {
@@ -130,6 +136,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(PROX_KEY, proximityRange.toString());
+    proximityRangeRef.current = proximityRange;
   }, [proximityRange]);
 
   useEffect(() => {
@@ -214,31 +221,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [items]);
 
-  const checkProximity = useCallback((currentLocation: Coordinates) => {
-    items.forEach(item => {
-      if (!item.completed && item.coordinates && !notifiedItems.current.has(item.id)) {
-        const dist = calculateDistance(currentLocation, item.coordinates);
-        
-        if (dist < proximityRange) {
-          // Visual Notification
-          sendNotification(
-            `Nearby: ${item.title}`, 
-            `${item.description}\nDistance: ${formatDistance(dist)}`,
-            `jk-item-${item.id}`
-          );
-          
-          // Audio Notification (TTS)
-          const distSpeech = getDistanceSpeech(dist);
-          const audioText = `Knock Knock! You are nearby ${item.title}. It is ${distSpeech} away. ${item.description}`;
-          speak(audioText);
-
-          notifiedItems.current.add(item.id);
-        }
-      }
-    });
-  }, [items, proximityRange]);
-
-  // Geolocation Watcher
+  // Optimized Geolocation Watcher
   useEffect(() => {
     let watchId: number | null = null;
 
@@ -261,7 +244,40 @@ export default function App() {
               };
               setUserLocation(newLocation);
               setLocating(false);
-              checkProximity(newLocation);
+              
+              // Check proximity inside the watcher using refs
+              // This prevents restarting the watcher when items or settings change
+              const currentItems = itemsRef.current;
+              const range = proximityRangeRef.current;
+              
+              currentItems.forEach(item => {
+                if (!item.completed && item.coordinates && !notifiedItems.current.has(item.id)) {
+                  const dist = calculateDistance(newLocation, item.coordinates);
+                  
+                  if (dist < range) {
+                    // 1. System Notification
+                    sendNotification(
+                      `Nearby: ${item.title}`, 
+                      `${item.description}\nDistance: ${formatDistance(dist)}`,
+                      `jk-item-${item.id}`
+                    );
+                    
+                    // 2. Audio Notification (TTS)
+                    const distSpeech = getDistanceSpeech(dist);
+                    const audioText = `Knock Knock! You are nearby ${item.title}. It is ${distSpeech} away. ${item.description}`;
+                    speak(audioText);
+                    
+                    // 3. In-App Toast
+                    setActiveToast({
+                        title: `Nearby: ${item.title}`,
+                        message: `${formatDistance(dist)} away - ${item.locationName || 'Check it out!'}`
+                    });
+                    setTimeout(() => setActiveToast(null), 6000);
+
+                    notifiedItems.current.add(item.id);
+                  }
+                }
+              });
             },
             (error) => {
               console.error("Location error:", error);
@@ -285,7 +301,7 @@ export default function App() {
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [isRadarOn, checkProximity]);
+  }, [isRadarOn]); // Minimal dependencies to ensure watcher stability
 
   const handleAddItem = (draft: BucketItemDraft) => {
     triggerHaptic('success');
@@ -501,7 +517,26 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-[#f8fafc] dark:bg-gray-900 transition-colors duration-300 flex flex-col">
+    <div className="h-screen overflow-hidden bg-[#f8fafc] dark:bg-gray-900 transition-colors duration-300 flex flex-col relative">
+      
+      {/* In-App Notification Toast */}
+      {activeToast && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm animate-in slide-in-from-top-4 fade-in duration-300">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 border border-red-100 dark:border-red-900/30 flex items-start gap-4">
+                  <div className="p-2.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full shrink-0 animate-pulse">
+                      <Bell className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-gray-900 dark:text-white text-sm">{activeToast.title}</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{activeToast.message}</p>
+                  </div>
+                  <button onClick={() => setActiveToast(null)} className="text-gray-400 hover:text-gray-600">
+                      <X className="w-4 h-4" />
+                  </button>
+              </div>
+          </div>
+      )}
+
       {/* Header */}
       <header className="flex-none z-30 border-b border-red-100/50 dark:border-gray-800 shadow-sm backdrop-blur-md bg-white/90 dark:bg-gray-900/90 transition-colors duration-300">
         <div className="max-w-2xl mx-auto px-6 py-2">
