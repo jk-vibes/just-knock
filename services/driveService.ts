@@ -15,9 +15,9 @@ export const driveService = {
 
   getAccessToken: () => accessToken,
 
-  backup: async (items: BucketItem[]): Promise<{ success: boolean; timestamp: string }> => {
+  backup: async (items: BucketItem[], silent: boolean = false): Promise<{ success: boolean; timestamp: string }> => {
     if (!accessToken) {
-      console.error("No access token available for backup");
+      if (!silent) console.error("No access token available for backup");
       return { success: false, timestamp: '' };
     }
 
@@ -84,7 +84,9 @@ export const driveService = {
       return { success: true, timestamp };
     } catch (e) {
       console.error("Backup failed:", e);
-      alert(e instanceof Error ? e.message : "Backup failed. Ensure Google Drive API is enabled in your Google Console.");
+      if (!silent) {
+        alert(e instanceof Error ? e.message : "Backup failed. Ensure Google Drive API is enabled in your Google Console.");
+      }
       return { success: false, timestamp: '' };
     }
   },

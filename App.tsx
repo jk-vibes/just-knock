@@ -14,6 +14,7 @@ import { BucketItem, BucketItemDraft, Coordinates, Theme, User } from './types';
 import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance, speak, getDistanceSpeech } from './utils/geo';
 import { MOCK_BUCKET_ITEMS, generateMockItems } from './utils/mockData';
 import { triggerHaptic } from './utils/haptics';
+import { driveService } from './services/driveService';
 
 const STORAGE_KEY = 'jk_bucket_items';
 const THEME_KEY = 'jk_theme';
@@ -220,6 +221,33 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, [items]);
+
+  // Auto-Backup Service (Every 24h)
+  useEffect(() => {
+      const runAutoBackup = async () => {
+          if (!user) return;
+          // Only perform backup if access token is available
+          if (!driveService.getAccessToken()) return;
+
+          const lastBackupStr = driveService.getLastBackupTime();
+          const now = Date.now();
+          const HOURS_24 = 24 * 60 * 60 * 1000;
+
+          const shouldBackup = !lastBackupStr || (now - new Date(lastBackupStr).getTime() > HOURS_24);
+
+          if (shouldBackup && items.length > 0) {
+              // Perform silent backup
+              await driveService.backup(items, true); 
+          }
+      };
+
+      // Run immediately on mount/update
+      runAutoBackup();
+
+      // Check every hour to catch the 24h window if app stays open
+      const interval = setInterval(runAutoBackup, 60 * 60 * 1000);
+      return () => clearInterval(interval);
+  }, [user, items]);
 
   // Optimized Geolocation Watcher
   useEffect(() => {
@@ -698,18 +726,17 @@ export default function App() {
                                 {/* Me */}
                                 <button 
                                     onClick={() => { setFilterOwner('Me'); triggerHaptic('light'); }}
-                                    className={`relative z-20 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === 'Me' ? 'bg-red-500 text-white border-white dark:border-gray-600' : 'bg-red-100 text-red-600 border-white dark:border-gray-700 dark:bg-gray-800'}`}
+                                    className={`relative z-20 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === 'Me' ? 'bg-purple-600 text-white border-purple-200 scale-110' : 'bg-purple-100 text-purple-600 border-white dark:border-gray-700'}`}
                                     title="Me"
                                 >
                                     ME
                                 </button>
-                                {/* Members */}
-                                {familyMembers.map((member, idx) => (
+                                {/* Others */}
+                                {familyMembers.map((member, i) => (
                                     <button 
                                         key={member}
                                         onClick={() => { setFilterOwner(member); triggerHaptic('light'); }}
-                                        className={`relative w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === member ? 'bg-purple-500 text-white border-white dark:border-gray-600' : 'bg-purple-100 text-purple-600 border-white dark:border-gray-700 dark:bg-gray-800'}`}
-                                        style={{ zIndex: 10 - idx }}
+                                        className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === member ? 'bg-blue-600 text-white border-blue-200 scale-110' : 'bg-blue-100 text-blue-600 border-white dark:border-gray-700'}`}
                                         title={member}
                                     >
                                         {getInitials(member)}
@@ -718,294 +745,145 @@ export default function App() {
                             </div>
                         )}
 
-                        {/* Filters */}
-                        <div className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <button 
+                        {/* Compact Toggle */}
+                        <button
+                            onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }}
+                            className={`p-1.5 rounded-lg border transition-colors ${isCompact ? 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600'}`}
+                            title="Compact View"
+                        >
+                            <AlignJustify className="w-4 h-4" />
+                        </button>
+
+                        {/* Status Filter Tabs */}
+                        <div className="bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm flex gap-0.5">
+                            <button
                                 onClick={() => { setFilterStatus('all'); triggerHaptic('light'); }}
-                                title="All Items"
-                                className={`p-1.5 rounded-md transition-all ${filterStatus === 'all' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${filterStatus === 'all' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                             >
-                                <Filter className="w-3.5 h-3.5" />
+                                All
                             </button>
-                            <button 
+                            <button
                                 onClick={() => { setFilterStatus('pending'); triggerHaptic('light'); }}
-                                title="Pending"
-                                className={`p-1.5 rounded-md transition-all ${filterStatus === 'pending' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${filterStatus === 'pending' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                             >
-                                <Circle className="w-3.5 h-3.5" />
+                                To Do
                             </button>
-                            <button 
+                            <button
                                 onClick={() => { setFilterStatus('completed'); triggerHaptic('light'); }}
-                                title="Completed"
-                                className={`p-1.5 rounded-md transition-all ${filterStatus === 'completed' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${filterStatus === 'completed' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                             >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Done
                             </button>
                         </div>
-
-                        {/* View Toggle */}
-                        <button 
-                            onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }}
-                            title={isCompact ? "Show Details" : "Compact View"}
-                            className={`p-1.5 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all ${isCompact ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800' : 'bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                        >
-                            {isCompact ? <AlignJustify className="w-4 h-4" /> : <LayoutList className="w-4 h-4" />}
-                        </button>
                     </div>
                 )}
             </div>
 
-            {/* Content View */}
-            {activeTab === 'list' ? (
-            <div className="space-y-3 pb-16">
-                {filteredItems.length === 0 ? (
-                <div className="text-center py-20 opacity-60">
-                    <div className="bg-gray-100 dark:bg-gray-800 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        {searchQuery ? <Search className="w-8 h-8 text-gray-400 dark:text-gray-500" /> : <Clock className="w-8 h-8 text-gray-400 dark:text-gray-500" />}
-                    </div>
-                    <p className="text-gray-500 dark:text-gray-400 font-medium">
-                        {searchQuery ? 'No dreams found matching your search.' : filterStatus === 'all' ? 'Your bucket is empty.' : `No ${filterStatus} items found.`}
-                    </p>
-                    {filterStatus === 'all' && !searchQuery && <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Start adding your wildest dreams!</p>}
-                </div>
-                ) : filterStatus === 'completed' ? (
-                    <TimelineView 
-                        items={filteredItems} 
-                        onEdit={handleEditClick}
-                        pendingCount={pendingCount}
-                        onViewPending={() => { setFilterStatus('pending'); triggerHaptic('light'); }}
-                    />
+            {/* CONTENT AREA */}
+            <div className="pb-20 space-y-3">
+                {activeTab === 'map' ? (
+                     <div className="animate-in fade-in zoom-in-95 duration-300">
+                        <MapView items={items} userLocation={userLocation} proximityRange={proximityRange} />
+                     </div>
                 ) : (
-                filteredItems.map(item => (
-                    <BucketListCard
-                    key={item.id}
-                    item={item}
-                    isCompact={isCompact}
-                    userLocation={userLocation}
-                    onToggleComplete={handleToggleComplete}
-                    onDelete={handleDelete}
-                    onEdit={handleEditClick}
-                    onViewImages={(item) => setViewingItemImages(item)}
-                    proximityRange={proximityRange}
-                    theme={theme}
-                    />
-                ))
-                )}
-            </div>
-            ) : (
-            <MapView items={filteredItems} userLocation={userLocation} proximityRange={proximityRange} />
-            )}
+                    <>
+                        {filterStatus === 'completed' && filteredItems.length > 0 && (
+                             <div className="animate-in fade-in slide-in-from-left-4 duration-500">
+                                <TimelineView items={filteredItems} onEdit={handleEditClick} pendingCount={pendingCount} onViewPending={() => setFilterStatus('pending')} />
+                             </div>
+                        )}
 
-            {/* Footer Tagline (Inside Scroll View) */}
-            <div className="py-4 text-center pb-24">
-                <p className="text-[9px] uppercase tracking-widest text-gray-300 dark:text-gray-700 font-bold select-none">
-                dream it. bucket it. knock it.
-                </p>
+                        {filterStatus !== 'completed' && (
+                            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {filteredItems.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
+                                        <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-4">
+                                            {filterStatus === 'completed' ? <Trophy className="w-8 h-8 text-gray-400" /> : <LayoutList className="w-8 h-8 text-gray-400" />}
+                                        </div>
+                                        <p className="text-gray-500 dark:text-gray-400 font-medium">
+                                            {searchQuery ? 'No matching dreams found.' : 'Your list is empty. Start dreaming!'}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    filteredItems.map(item => (
+                                        <BucketListCard 
+                                            key={item.id} 
+                                            item={item} 
+                                            userLocation={userLocation}
+                                            onToggleComplete={handleToggleComplete}
+                                            onDelete={handleDelete}
+                                            onEdit={handleEditClick}
+                                            onViewImages={setViewingItemImages}
+                                            isCompact={isCompact}
+                                            proximityRange={proximityRange}
+                                            theme={theme}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
         </div>
       </main>
 
-      {/* Floating Action Button */}
-      <button
-        onClick={() => {
-            triggerHaptic('medium');
-            setEditingItem(null);
-            setIsAddModalOpen(true);
-        }}
-        className="fixed bottom-6 right-6 z-50 group transition-transform duration-200 hover:scale-110 active:scale-95 text-gray-700 dark:text-gray-200"
-        title={`${globalPendingCount} to knock out`}
-      >
-        <div className="relative w-16 h-16 filter drop-shadow-2xl">
-            {/* SVG Bucket Icon - Waving Water Animation */}
-            <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <clipPath id="bucketClip">
-                        <path d="M4 8H20L18 22H6L4 8Z" />
-                    </clipPath>
-                    <style>
-                       {`
-                         @keyframes wave {
-                           0% { transform: translateX(0); }
-                           100% { transform: translateX(-24px); }
-                         }
-                       `}
-                    </style>
-                </defs>
-                
-                {/* Handle - Thinner stroke */}
-                <path d="M5 8C5 3 19 3 19 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                
-                {/* Liquid Container */}
-                <g clipPath="url(#bucketClip)">
-                   {/* Water Level Group */}
-                   <g transform={`translate(0, ${22 - (14 * Math.min(Math.max(fillPercentage, 0), 100) / 100)})`}>
-                       {/* Back Wave (Lighter/Slower) */}
-                       <path 
-                         d="M0 0 Q 6 -1.5, 12 0 T 24 0 T 36 0 T 48 0 V 24 H 0 Z" 
-                         fill={getFillColor()}
-                         opacity="0.6"
-                         style={{
-                             animation: 'wave 3s linear infinite reverse',
-                         }}
-                       />
-                       {/* Front Wave */}
-                       <path 
-                         d="M0 0 Q 6 -2.5, 12 0 T 24 0 T 36 0 T 48 0 V 24 H 0 Z" 
-                         fill={getFillColor()}
-                         style={{
-                             animation: 'wave 2s linear infinite',
-                         }}
-                       />
-                   </g>
-                </g>
-                
-                {/* Bucket Body Outline */}
-                <path d="M4 8H20L18 22H6L4 8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
-            </svg>
-
-             {/* Plus Badge - Adjusted for smaller bucket */}
-            <div className="absolute -top-2 -right-2 bg-red-600 dark:bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm">
-                <Plus className="w-5 h-5" strokeWidth={3} />
-            </div>
-
-            {/* Hover Tooltip */}
-            <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-gray-900 dark:bg-gray-800 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none shadow-lg translate-x-2 group-hover:translate-x-0">
-                {globalPendingCount} to knock out
-            </span>
-        </div>
-      </button>
-
-      {/* Search Modal */}
+      {/* Search Overlay Input (When open) */}
       {isSearchOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsSearchOpen(false)}>
-            <div 
-                className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-2 duration-200 ring-1 ring-gray-900/5"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* Search Header */}
-                <div className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                    <Search className="w-5 h-5 text-red-500 shrink-0" />
-                    <input 
-                        type="text"
-                        autoFocus
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search your bucket list..."
-                        className="flex-grow bg-transparent text-lg text-gray-900 dark:text-white placeholder-gray-400 outline-none"
-                    />
-                    <button 
-                        onClick={() => {
-                            if (searchQuery) setSearchQuery('');
-                            else setIsSearchOpen(false);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-
-                {/* Results List */}
-                <div className="max-h-[50vh] overflow-y-auto p-2 scroll-py-2">
-                    {/* Empty State */}
-                    {!searchQuery && (
-                        <div className="py-8 text-center text-gray-400 text-sm">
-                            Type to start searching...
-                        </div>
-                    )}
-                    
-                    {/* No Results */}
-                    {searchQuery && filteredItems.length === 0 && (
-                        <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-                            No matching dreams found.
-                        </div>
-                    )}
-
-                    {/* List */}
-                    {searchQuery && filteredItems.map(item => (
-                         <button 
-                            key={item.id}
-                            onClick={() => {
-                                setIsSearchOpen(false);
-                            }}
-                            className="w-full text-left p-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center justify-between group transition-colors"
-                          >
-                              <div className="min-w-0">
-                                  <h4 className="font-semibold text-gray-800 dark:text-gray-200 truncate pr-2">
-                                    <span dangerouslySetInnerHTML={{
-                                        __html: item.title.replace(new RegExp(`(${searchQuery})`, 'gi'), '<span class="text-red-600 dark:text-red-400 font-bold">$1</span>')
-                                    }} />
-                                  </h4>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    {item.locationName && (
-                                        <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 truncate">
-                                            <MapIcon className="w-3 h-3" /> {item.locationName}
-                                        </span>
-                                    )}
-                                    {item.completed && (
-                                         <span className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1.5 rounded-full">
-                                            Done
-                                         </span>
-                                    )}
-                                  </div>
-                              </div>
-                              <ArrowLeft className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-red-500 -rotate-45" />
-                          </button>
-                    ))}
-                </div>
-                
-                {/* Footer Info */}
-                {searchQuery && filteredItems.length > 0 && (
-                    <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex justify-between">
-                         <span>{filteredItems.length} result(s)</span>
-                         <span>Press Enter to view all</span>
-                    </div>
-                )}
-            </div>
-        </div>
+          <div className="fixed inset-0 z-40 bg-white/90 dark:bg-gray-900/95 backdrop-blur-sm p-4 animate-in fade-in slide-in-from-top-10">
+              <div className="max-w-2xl mx-auto">
+                  <div className="flex items-center gap-3">
+                      <button onClick={() => setIsSearchOpen(false)} className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                          <ArrowLeft className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+                      </button>
+                      <div className="flex-1 relative">
+                          <input 
+                              autoFocus
+                              type="text" 
+                              placeholder="Search your dreams..." 
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-full text-lg bg-transparent border-b-2 border-red-500 py-2 outline-none text-gray-900 dark:text-white placeholder-gray-400"
+                          />
+                          {searchQuery && (
+                              <button onClick={() => setSearchQuery('')} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                  <X className="w-5 h-5" />
+                              </button>
+                          )}
+                      </div>
+                  </div>
+              </div>
+          </div>
       )}
 
-      {/* Add/Edit Modal */}
-      <AddItemModal
-        isOpen={isAddModalOpen}
-        onClose={() => {
-            setIsAddModalOpen(false);
-            setEditingItem(null);
-        }}
+      {/* Floating Action Button (FAB) */}
+      {!isSearchOpen && (
+        <button
+            onClick={() => {
+                setIsAddModalOpen(true);
+                triggerHaptic('medium');
+            }}
+            className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-red-500 to-orange-600 text-white rounded-full shadow-lg hover:shadow-red-500/40 hover:scale-110 active:scale-95 transition-all flex items-center justify-center z-40 group"
+        >
+            <Plus className="w-7 h-7 group-hover:rotate-90 transition-transform duration-300" />
+            <span className="absolute -top-10 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                Add Wish
+            </span>
+        </button>
+      )}
+
+      {/* Modals */}
+      <AddItemModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }}
         onAdd={handleAddItem}
         categories={categories}
         availableInterests={interests}
         familyMembers={familyMembers}
-        initialData={editingItem ? {
-            title: editingItem.title,
-            description: editingItem.description,
-            locationName: editingItem.locationName,
-            latitude: editingItem.coordinates?.latitude,
-            longitude: editingItem.coordinates?.longitude,
-            category: editingItem.category,
-            interests: editingItem.interests,
-            owner: editingItem.owner,
-            isCompleted: editingItem.completed,
-            completedAt: editingItem.completedAt,
-            images: editingItem.images
-        } : null}
+        initialData={editingItem}
         mode={editingItem ? 'edit' : 'add'}
       />
-
-      {/* Complete Date Modal */}
-      <CompleteDateModal 
-        isOpen={!!completingItem}
-        onClose={() => setCompletingItem(null)}
-        onConfirm={handleConfirmCompletion}
-        itemTitle={completingItem?.title}
-      />
-
-      {/* Image Gallery Modal */}
-      <ImageGalleryModal 
-        item={viewingItemImages}
-        onClose={() => setViewingItemImages(null)}
-      />
-
-      {/* Settings Modal */}
+      
       <SettingsModal 
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -1017,21 +895,36 @@ export default function App() {
         categories={categories}
         interests={interests}
         familyMembers={familyMembers}
-        onAddCategory={(cat) => setCategories(p => [...p, cat])}
-        onRemoveCategory={(cat) => setCategories(p => p.filter(c => c !== cat))}
-        onAddInterest={(int) => setInterests(p => [...p, int])}
-        onRemoveInterest={(int) => setInterests(p => p.filter(i => i !== int))}
-        onAddFamilyMember={(name) => setFamilyMembers(p => [...p, name])}
-        onRemoveFamilyMember={(name) => setFamilyMembers(p => p.filter(n => n !== name))}
+        onAddCategory={(c) => setCategories(p => [...p, c])}
+        onRemoveCategory={(c) => setCategories(p => p.filter(x => x !== c))}
+        onAddInterest={(i) => setInterests(p => [...p, i])}
+        onRemoveInterest={(i) => setInterests(p => p.filter(x => x !== i))}
+        onAddFamilyMember={(m) => setFamilyMembers(p => [...p, m])}
+        onRemoveFamilyMember={(m) => setFamilyMembers(p => p.filter(x => x !== m))}
         onLogout={() => setUser(null)}
         items={items}
         onRestore={handleRestoreData}
         proximityRange={proximityRange}
         onProximityRangeChange={setProximityRange}
       />
-      
-      {/* Changelog Modal */}
-      <ChangelogModal isOpen={isChangelogOpen} onClose={() => setIsChangelogOpen(false)} />
+
+      <CompleteDateModal 
+        isOpen={!!completingItem}
+        onClose={() => setCompletingItem(null)}
+        onConfirm={handleConfirmCompletion}
+        itemTitle={completingItem?.title}
+      />
+
+      <ChangelogModal 
+        isOpen={isChangelogOpen} 
+        onClose={() => setIsChangelogOpen(false)} 
+      />
+
+      <ImageGalleryModal
+        item={viewingItemImages}
+        onClose={() => setViewingItemImages(null)}
+      />
+
     </div>
   );
 }

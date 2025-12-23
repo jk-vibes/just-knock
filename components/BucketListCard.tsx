@@ -69,10 +69,8 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
 
   const isNearby = distance !== null && distance < proximityRange;
 
-  // Single Image Logic
   const images = item.images || [];
   const hasImage = images.length > 0;
-  const displayImage = images[0];
 
   const handleNavigate = () => {
     if (item.coordinates) {
@@ -168,23 +166,18 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                     </button>
                 </div>
             )}
+
+            {hasImage && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onViewImages(item); }}
+                className="flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded-lg border border-purple-100 dark:border-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+              >
+                <ImageIcon className="w-3 h-3" />
+                {!isCompact && <span>Photo</span>}
+              </button>
+            )}
           </div>
         </div>
-        
-        {/* Right Side: Single Representative Image */}
-        {hasImage && !isCompact && (
-            <div 
-                onClick={() => onViewImages(item)}
-                className="w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm mt-1 cursor-pointer hover:ring-2 hover:ring-red-400 transition-all relative group/img"
-            >
-                <img 
-                    src={displayImage} 
-                    alt={item.title} 
-                    className={`w-full h-full object-cover transition-all duration-500 group-hover/img:scale-110 ${item.completed ? 'grayscale opacity-70' : 'opacity-100'}`}
-                    loading="lazy"
-                />
-            </div>
-        )}
 
         <div className="flex flex-col gap-0.5 shrink-0">
             <button 
