@@ -3,9 +3,7 @@ import { BucketItem } from "../types";
 
 // Helper to generate consistent images with variations
 const getImgs = (keyword: string) => [
-    `https://image.pollinations.ai/prompt/${encodeURIComponent(keyword)}?width=600&height=400&nologo=true&seed=1`,
-    `https://image.pollinations.ai/prompt/Cinematic shot of ${encodeURIComponent(keyword)}?width=600&height=400&nologo=true&seed=2`,
-    `https://image.pollinations.ai/prompt/Close up detail of ${encodeURIComponent(keyword)}?width=600&height=400&nologo=true&seed=3`
+    `https://image.pollinations.ai/prompt/${encodeURIComponent(keyword)}?width=600&height=400&nologo=true&seed=1`
 ];
 
 const ONE_YEAR_MS = 31536000000;

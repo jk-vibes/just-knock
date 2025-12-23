@@ -29,12 +29,7 @@ const bucketItemSchema: Schema = {
     },
     imageKeyword: {
       type: Type.STRING,
-      description: "A specific, visual 2-3 word phrase describing the main scene."
-    },
-    imageKeywords: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "A list of 5 different visual keywords describing different angles or details of this activity (e.g. 'Eiffel Tower night', 'Paris street cafe', 'Top of Eiffel Tower view')."
+      description: "A single, highly specific visual 2-3 word phrase describing the main scene for finding a stock photo."
     },
     category: {
       type: Type.STRING,
@@ -46,7 +41,7 @@ const bucketItemSchema: Schema = {
       description: "A list of 1-3 interest tags related to this item."
     }
   },
-  required: ["title", "description", "locationName", "latitude", "longitude", "imageKeyword", "imageKeywords", "category", "interests"]
+  required: ["title", "description", "locationName", "latitude", "longitude", "imageKeyword", "category", "interests"]
 };
 
 // Helper to generate multiple image URLs based on keywords with variations
@@ -69,7 +64,7 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       If the user specifies an activity without a place (e.g. "Go skydiving"), suggest the single most famous or best place in the world to do it.
       Return the coordinates for that place.
       Classify the item into EXACTLY ONE of these categories: [${categoriesString}]. If none fit perfectly, choose "Other".
-      Generate 5 visual keywords to find a gallery of pictures for this activity. Each should be a slightly different perspective.
+      Generate a single specific visual keyword phrase to find one perfect picture for this activity.
       Generate 1-3 short interest tags (e.g. "Hiking", "History", "Food").`,
       config: {
         responseMimeType: "application/json",
@@ -89,7 +84,7 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       locationName: data.locationName,
       latitude: data.latitude !== 0 ? data.latitude : undefined,
       longitude: data.longitude !== 0 ? data.longitude : undefined,
-      images: data.imageKeywords ? generateImageUrls(data.imageKeywords) : (data.imageKeyword ? generateImageUrls([data.imageKeyword]) : []),
+      images: data.imageKeyword ? generateImageUrls([data.imageKeyword]) : [],
       category: data.category,
       interests: data.interests || []
     };
@@ -140,13 +135,13 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
         locationName: data.locationName,
         latitude: data.latitude !== 0 ? data.latitude : undefined,
         longitude: data.longitude !== 0 ? data.longitude : undefined,
-        images: data.imageKeywords ? generateImageUrls(data.imageKeywords) : (data.imageKeyword ? generateImageUrls([data.imageKeyword]) : []),
+        images: data.imageKeyword ? generateImageUrls([data.imageKeyword]) : [],
         category: data.category,
         interests: data.interests || []
       };
     } catch (error) {
       console.error("Gemini suggestion failed", error);
-      const keywords = ["Pyramids Giza", "Great Sphinx", "Ancient Cairo", "Giza Plateau", "Egyptian Museum"];
+      const keywords = ["Pyramids Giza"];
       return {
         title: "Visit the Pyramids of Giza",
         description: "Stand before the ancient wonders of the world.",

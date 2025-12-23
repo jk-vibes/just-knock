@@ -816,18 +816,51 @@ export default function App() {
         title={`${globalPendingCount} to knock out`}
       >
         <div className="relative w-16 h-16 filter drop-shadow-2xl">
-            {/* SVG Bucket Icon - Dynamic Liquid Fill - Thinner Stroke & Sharper Shape */}
+            {/* SVG Bucket Icon - Waving Water Animation */}
             <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                    <linearGradient id="bucketFill" x1="0" x2="0" y1="1" y2="0">
-                        <stop offset={`${fillPercentage}%`} stopColor={getFillColor()} />
-                        <stop offset={`${fillPercentage}%`} stopColor="transparent" />
-                    </linearGradient>
+                    <clipPath id="bucketClip">
+                        <path d="M4 8H20L18 22H6L4 8Z" />
+                    </clipPath>
+                    <style>
+                       {`
+                         @keyframes wave {
+                           0% { transform: translateX(0); }
+                           100% { transform: translateX(-24px); }
+                         }
+                       `}
+                    </style>
                 </defs>
+                
                 {/* Handle - Thinner stroke */}
                 <path d="M5 8C5 3 19 3 19 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                {/* Body - Sharper Trapezoid like JK Logo - Thinner stroke */}
-                <path d="M4 8H20L18 22H6L4 8Z" fill="url(#bucketFill)" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                
+                {/* Liquid Container */}
+                <g clipPath="url(#bucketClip)">
+                   {/* Water Level Group */}
+                   <g transform={`translate(0, ${22 - (14 * Math.min(Math.max(fillPercentage, 0), 100) / 100)})`}>
+                       {/* Back Wave (Lighter/Slower) */}
+                       <path 
+                         d="M0 0 Q 6 -1.5, 12 0 T 24 0 T 36 0 T 48 0 V 24 H 0 Z" 
+                         fill={getFillColor()}
+                         opacity="0.6"
+                         style={{
+                             animation: 'wave 3s linear infinite reverse',
+                         }}
+                       />
+                       {/* Front Wave */}
+                       <path 
+                         d="M0 0 Q 6 -2.5, 12 0 T 24 0 T 36 0 T 48 0 V 24 H 0 Z" 
+                         fill={getFillColor()}
+                         style={{
+                             animation: 'wave 2s linear infinite',
+                         }}
+                       />
+                   </g>
+                </g>
+                
+                {/* Bucket Body Outline */}
+                <path d="M4 8H20L18 22H6L4 8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
             </svg>
 
              {/* Plus Badge - Adjusted for smaller bucket */}

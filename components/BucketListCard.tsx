@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { MapPin, Navigation, CheckCircle2, Circle, Trash2, Pencil, Image as ImageIcon, Layers } from 'lucide-react';
+import React from 'react';
+import { MapPin, Navigation, CheckCircle2, Circle, Trash2, Pencil, Image as ImageIcon } from 'lucide-react';
 import { BucketItem, Coordinates, Theme } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 
@@ -63,22 +63,16 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
   proximityRange = 10000,
   theme
 }) => {
-  const [displayImageIndex, setDisplayImageIndex] = useState(0);
-
-  // Reset index when item images change
-  useEffect(() => {
-    setDisplayImageIndex(0);
-  }, [item.images]);
-
   const distance = (item.coordinates && userLocation)
     ? calculateDistance(userLocation, item.coordinates)
     : null;
 
   const isNearby = distance !== null && distance < proximityRange;
 
+  // Single Image Logic
   const images = item.images || [];
-  const hasImages = images.length > 0;
-  const imageCount = images.length;
+  const hasImage = images.length > 0;
+  const displayImage = images[0];
 
   const handleNavigate = () => {
     if (item.coordinates) {
@@ -90,14 +84,6 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
-
-  const handleImageError = () => {
-      // If current image fails, try the next one
-      setDisplayImageIndex(prev => prev + 1);
-  };
-
-  // Determine if we have a valid image to show
-  const showImage = hasImages && displayImageIndex < images.length;
 
   return (
     <div className={`relative group bg-white dark:bg-gray-800 rounded-2xl shadow-sm border transition-all duration-300 overflow-hidden ${isCompact ? 'p-2' : 'p-3.5'} ${isNearby ? 'border-orange-400 ring-1 ring-orange-100 dark:ring-orange-900/30' : 'border-gray-100 dark:border-gray-700 hover:shadow-md'}`}>
@@ -127,18 +113,6 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                     {item.title}
                     </h3>
                     
-                    {/* Image Icon Trigger - prominently next to title */}
-                    {hasImages && showImage && (
-                        <button 
-                            onClick={() => onViewImages(item)}
-                            className="flex items-center gap-1 px-1.5 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-100 dark:border-red-900/30 hover:bg-red-100 transition-colors animate-in fade-in"
-                            title={`View ${imageCount} Images`}
-                        >
-                            <ImageIcon className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-bold">{imageCount}</span>
-                        </button>
-                    )}
-
                     {item.owner && item.owner !== 'Me' && (
                         <span className="text-[9px] font-bold text-white bg-purple-500 px-1.5 py-0.5 rounded-full whitespace-nowrap" title={`Wish belongs to ${item.owner}`}>
                             {getInitials(item.owner)}
@@ -197,22 +171,18 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
           </div>
         </div>
         
-        {/* Right Side: Primary Thumbnail with Gallery Overlay */}
-        {hasImages && !isCompact && showImage && (
+        {/* Right Side: Single Representative Image */}
+        {hasImage && !isCompact && (
             <div 
                 onClick={() => onViewImages(item)}
                 className="w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm mt-1 cursor-pointer hover:ring-2 hover:ring-red-400 transition-all relative group/img"
             >
                 <img 
-                    src={images[displayImageIndex]} 
+                    src={displayImage} 
                     alt={item.title} 
-                    onError={handleImageError}
                     className={`w-full h-full object-cover transition-all duration-500 group-hover/img:scale-110 ${item.completed ? 'grayscale opacity-70' : 'opacity-100'}`}
                     loading="lazy"
                 />
-                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity">
-                    <Layers className="w-6 h-6 text-white drop-shadow-lg" />
-                </div>
             </div>
         )}
 
