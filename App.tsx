@@ -41,7 +41,7 @@ const BucketLogo = ({ onClickVersion }: { onClickVersion: () => void }) => (
                 onClick={(e) => { e.stopPropagation(); onClickVersion(); }}
                 className="text-[8px] font-bold text-gray-400 hover:text-red-500 cursor-pointer bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm"
             >
-                v1.3
+                v1.4
             </button>
         </div>
         <span className="logo-text text-[9px] font-bold text-red-600 dark:text-red-500 tracking-widest leading-none mt-0.5 ml-0.5">just knock it</span>

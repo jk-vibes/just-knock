@@ -35,6 +35,13 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   const history = [
       {
+        date: "Dec 23, 2025 (v1.4)",
+        changes: [
+            "Added timeline view in Home screen",
+            "Added slider control to view multi year data in Map section"
+        ]
+      },
+      {
         date: "Dec 21, 2025 (v1.3)",
         changes: [
             "Add appropriate images while adding wish list",
@@ -83,7 +90,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         </button>
 
         <div className="bg-gradient-to-br from-red-600 to-red-500 p-6 pt-8 text-center text-white shrink-0">
-            <h2 className="text-2xl font-bold mb-1">Just Knock v1.3</h2>
+            <h2 className="text-2xl font-bold mb-1">Just Knock v1.4</h2>
             <p className="text-red-100 text-sm opacity-90">What's New</p>
         </div>
 
@@ -123,7 +130,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
             </div>
 
             <div className="pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
-                <p className="text-[10px] text-gray-400">Build 2025.12.21 • Made with ❤️</p>
+                <p className="text-[10px] text-gray-400">Build 2025.12.23 • Made with ❤️</p>
             </div>
         </div>
       </div>
