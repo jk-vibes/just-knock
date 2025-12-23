@@ -29,15 +29,59 @@ const DEFAULT_CATEGORIES = ['Adventure', 'Travel', 'Food', 'Culture', 'Nature', 
 const DEFAULT_INTERESTS = ['Hiking', 'Photography', 'History', 'Art', 'Beach', 'Mountains', 'Wildlife', 'Music'];
 const DEFAULT_PROXIMITY = 2000; // 2km in meters
 
+// --- LIQUID BUCKET COMPONENT ---
+const LiquidBucket = ({ text, className = "w-10 h-10", hideText = false }: { text: string, className?: string, hideText?: boolean }) => (
+    <svg viewBox="0 0 512 512" className={`${className} filter drop-shadow-sm transition-transform hover:scale-110 duration-300`}>
+        <defs>
+            <clipPath id={`bucket-clip-${text}`}>
+                 <path d="M56 160l40 320h320l40-320Z" />
+            </clipPath>
+        </defs>
+        
+        {/* Handle */}
+        <path d="M56 160c0-100 400-100 400 0" stroke="currentColor" strokeWidth="40" strokeLinecap="round" fill="none" />
+        
+        {/* Liquid Group - Approx 70% Fill (Y start ~230) */}
+        <g clipPath={`url(#bucket-clip-${text})`}>
+             {/* Back Wave */}
+             <path fill="currentColor" opacity="0.5" d="M0 230 Q 128 190 256 230 T 512 230 V 512 H 0 Z">
+                  <animate attributeName="d" dur="3s" repeatCount="indefinite"
+                     values="
+                     M0 230 Q 128 190 256 230 T 512 230 V 512 H 0 Z;
+                     M0 230 Q 128 270 256 230 T 512 230 V 512 H 0 Z;
+                     M0 230 Q 128 190 256 230 T 512 230 V 512 H 0 Z" 
+                 />
+             </path>
+             {/* Front Wave */}
+             <path fill="currentColor" opacity="0.8" d="M0 250 Q 128 290 256 250 T 512 250 V 512 H 0 Z">
+                  <animate attributeName="d" dur="2s" repeatCount="indefinite"
+                     values="
+                     M0 250 Q 128 290 256 250 T 512 250 V 512 H 0 Z;
+                     M0 250 Q 128 210 256 250 T 512 250 V 512 H 0 Z;
+                     M0 250 Q 128 290 256 250 T 512 250 V 512 H 0 Z" 
+                 />
+             </path>
+        </g>
+
+        {/* Body Outline (drawn over liquid to keep crisp edges) */}
+        <path d="M56 160l40 320h320l40-320Z" stroke="currentColor" strokeWidth="40" strokeLinejoin="round" fill="none" />
+        
+        {/* Text */}
+        {!hideText && (
+            <text x="256" y="380" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize={text.length > 1 ? "160" : "280"} fill="white" textAnchor="middle" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                {text}
+            </text>
+        )}
+    </svg>
+);
+
 // Custom Bucket Logo Component - JK Design with Text
 const BucketLogo = ({ onClickVersion }: { onClickVersion: () => void }) => (
     <div className="flex flex-col items-start justify-center">
         <div className="flex items-center gap-2">
-            <svg width="40" height="40" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 filter drop-shadow-sm transition-transform hover:scale-110 duration-300">
-                <path d="M56 160c0-100 400-100 400 0" stroke="#ef4444" strokeWidth="40" strokeLinecap="round" fill="none"></path>
-                <path d="M56 160l40 320h320l40-320Z" fill="#ef4444"></path>
-                <text x="256" y="380" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize="160" fill="#ffffff" textAnchor="middle">JK</text>
-            </svg>
+            <div className="text-red-500 dark:text-red-500">
+                <LiquidBucket text="JK" className="w-10 h-10" />
+            </div>
             <button 
                 onClick={(e) => { e.stopPropagation(); onClickVersion(); }}
                 className="text-[8px] font-bold text-gray-400 hover:text-red-500 cursor-pointer bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm"
@@ -866,10 +910,22 @@ export default function App() {
                 setIsAddModalOpen(true);
                 triggerHaptic('medium');
             }}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-red-500 to-orange-600 text-white rounded-full shadow-lg hover:shadow-red-500/40 hover:scale-110 active:scale-95 transition-all flex items-center justify-center z-40 group"
+            className="fixed bottom-6 right-6 z-40 group"
+            aria-label="Add Wish"
         >
-            <Plus className="w-7 h-7 group-hover:rotate-90 transition-transform duration-300" />
-            <span className="absolute -top-10 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+             <div className="relative flex items-center justify-center">
+                {/* Bucket Icon - Increased Size */}
+                <div className="text-[#ff0000] dark:text-[#ff0000] transition-transform duration-300 group-hover:-rotate-12 group-active:scale-95 filter drop-shadow-xl">
+                    <LiquidBucket text="fab" hideText={true} className="w-16 h-16" />
+                </div>
+                
+                {/* Plus Badge */}
+                <div className="absolute top-0 right-0 translate-x-1 translate-y-1 bg-white dark:bg-gray-800 text-red-600 rounded-full w-7 h-7 flex items-center justify-center shadow-lg border-2 border-red-100 dark:border-gray-700">
+                    <Plus className="w-4 h-4 stroke-[4]" />
+                </div>
+            </div>
+
+            <span className="absolute -top-8 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                 Add Wish
             </span>
         </button>
