@@ -11,8 +11,8 @@ interface TimelineViewProps {
 }
 
 export const TimelineView: React.FC<TimelineViewProps> = ({ items, onEdit, pendingCount, onViewPending }) => {
-  // Sort items: Oldest completed first (Chronological)
-  const sortedItems = [...items].sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
+  // Sort items: Newest completed first (Reverse Chronological)
+  const sortedItems = [...items].sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
   // Group by Year
   const grouped = sortedItems.reduce((groups, item) => {
@@ -23,7 +23,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ items, onEdit, pendi
     return groups;
   }, {} as Record<number, BucketItem[]>);
 
-  const years = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+  // Sort years descending (Newest year first)
+  const years = Object.keys(grouped).map(Number).sort((a, b) => b - a);
 
   const getYearColor = (year: number) => {
     const colors = [

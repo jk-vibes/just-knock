@@ -8,6 +8,8 @@ const getImgs = (keyword: string) => [
     `https://image.pollinations.ai/prompt/Close up detail of ${encodeURIComponent(keyword)}?width=600&height=400&nologo=true&seed=3`
 ];
 
+const ONE_YEAR_MS = 31536000000;
+
 // --- EXISTING CURATED DATA (Kept for quality) ---
 const CURATED_ITEMS: BucketItem[] = [
   // --- INDIA: TEMPLES & SPIRITUAL ---
@@ -21,7 +23,7 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Culture",
     interests: ["Temple", "Spiritual", "Pilgrimage"],
     completed: false,
-    createdAt: Date.now() - 100000000
+    createdAt: Date.now() - ONE_YEAR_MS * 2
   },
   {
     id: "ind-t-2",
@@ -32,8 +34,9 @@ const CURATED_ITEMS: BucketItem[] = [
     images: getImgs("Meenakshi Amman Temple"),
     category: "Culture",
     interests: ["Temple", "Architecture", "History"],
-    completed: false,
-    createdAt: Date.now() - 99000000
+    completed: true,
+    createdAt: Date.now() - ONE_YEAR_MS * 4,
+    completedAt: Date.now() - ONE_YEAR_MS * 3.2 // Completed ~3 years ago
   },
   {
     id: "ind-t-3",
@@ -45,7 +48,7 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Culture",
     interests: ["Spiritual", "River", "History"],
     completed: false,
-    createdAt: Date.now() - 98000000
+    createdAt: Date.now() - ONE_YEAR_MS * 1.5
   },
   {
     id: "ind-t-4",
@@ -57,8 +60,8 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Culture",
     interests: ["Spiritual", "Peace", "Community"],
     completed: true,
-    createdAt: Date.now() - 97000000,
-    completedAt: Date.now() - 10000000
+    createdAt: Date.now() - ONE_YEAR_MS * 3,
+    completedAt: Date.now() - ONE_YEAR_MS * 0.5 // Completed 6 months ago
   },
   {
     id: "ind-t-5",
@@ -70,7 +73,7 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Culture",
     interests: ["Architecture", "History", "Unesco"],
     completed: false,
-    createdAt: Date.now() - 96000000
+    createdAt: Date.now() - ONE_YEAR_MS * 2.5
   },
   // --- USA: LANDMARKS ---
   {
@@ -83,7 +86,7 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Travel",
     interests: ["Iconic", "History", "Boat"],
     completed: false,
-    createdAt: Date.now() - 50000000
+    createdAt: Date.now() - ONE_YEAR_MS * 1.8
   },
   {
     id: "usa-l-2",
@@ -95,8 +98,8 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Travel",
     interests: ["Architecture", "Views", "Iconic"],
     completed: true,
-    createdAt: Date.now() - 49000000,
-    completedAt: Date.now() - 5000000
+    createdAt: Date.now() - ONE_YEAR_MS * 5,
+    completedAt: Date.now() - ONE_YEAR_MS * 2.1 // Completed 2 years ago
   },
   {
     id: "usa-l-3",
@@ -108,7 +111,7 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Travel",
     interests: ["History", "Monument", "Mountains"],
     completed: false,
-    createdAt: Date.now() - 48000000
+    createdAt: Date.now() - ONE_YEAR_MS * 3.5
   },
   {
     id: "usa-n-1",
@@ -119,8 +122,9 @@ const CURATED_ITEMS: BucketItem[] = [
     images: getImgs("Grand Canyon Sunset"),
     category: "Nature",
     interests: ["Views", "Hiking", "Wonder"],
-    completed: false,
-    createdAt: Date.now() - 38000000
+    completed: true,
+    createdAt: Date.now() - ONE_YEAR_MS * 4,
+    completedAt: Date.now() - ONE_YEAR_MS * 1.5 // Completed 1.5 years ago
   },
   {
     id: "usa-f-1",
@@ -132,7 +136,7 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Food",
     interests: ["Sweet", "Coffee", "Jazz"],
     completed: false,
-    createdAt: Date.now() - 23000000
+    createdAt: Date.now() - ONE_YEAR_MS * 0.8
   }
 ];
 
@@ -190,12 +194,23 @@ const randomOffset = () => (Math.random() - 0.5) * 0.2;
 const generateItem = (index: number): BucketItem => {
   const city = CITIES[Math.floor(Math.random() * CITIES.length)];
   const activity = ACTIVITIES[Math.floor(Math.random() * ACTIVITIES.length)];
-  const isCompleted = Math.random() > 0.8; // 20% chance of being completed
-  const createdTime = Date.now() - Math.floor(Math.random() * 31536000000); // Created within last year
-  const seed = Math.floor(Math.random() * 1000);
+  
+  // 35% chance of being completed
+  const isCompleted = Math.random() > 0.65;
+  
+  // Creation time: Randomly within the last 5 years
+  const maxAge = ONE_YEAR_MS * 5;
+  const createdTime = Date.now() - Math.floor(Math.random() * maxAge);
   
   const keyword = `${activity.noun} in ${city.name}`;
   
+  let completedAt = undefined;
+  if (isCompleted) {
+      // Completed time: Randomly between creation and now
+      const timeSinceCreation = Date.now() - createdTime;
+      completedAt = createdTime + Math.floor(Math.random() * timeSinceCreation);
+  }
+
   return {
     id: `gen-${index}`,
     title: `${activity.verb} ${city.name} ${activity.noun}`,
@@ -210,15 +225,14 @@ const generateItem = (index: number): BucketItem => {
     interests: [...activity.tags, city.country],
     completed: isCompleted,
     createdAt: createdTime,
-    // If completed, set completedAt to sometime after creation but before now
-    completedAt: isCompleted ? createdTime + Math.floor(Math.random() * (Date.now() - createdTime)) : undefined
+    completedAt: completedAt
   };
 };
 
 export const generateMockItems = (): BucketItem[] => {
   const generated: BucketItem[] = [];
-  // Generate ~950 items to reach approx 1000 total with curated ones
-  for (let i = 0; i < 950; i++) {
+  // Generate ~1000 items
+  for (let i = 0; i < 1000; i++) {
     generated.push(generateItem(i));
   }
   return [...CURATED_ITEMS, ...generated];

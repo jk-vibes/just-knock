@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft } from 'lucide-react';
+import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -430,7 +430,11 @@ export default function App() {
   // Calculate Fill Percentage (Pending / Total)
   const totalItems = items.length;
   const globalPendingCount = items.filter(i => !i.completed).length;
+  const completedGlobalCount = totalItems - globalPendingCount;
   const fillPercentage = totalItems > 0 ? (globalPendingCount / totalItems) * 100 : 0;
+  
+  // Progress Meter Calculation (0-100)
+  const progressMeter = totalItems > 0 ? (completedGlobalCount / totalItems) * 100 : 0;
 
   // Determine fill color based on theme
   const getFillColor = () => {
@@ -585,6 +589,38 @@ export default function App() {
                         >
                             <X className="w-4 h-4" />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Progress Meter / Slider */}
+            {totalItems > 0 && activeTab === 'list' && !searchQuery && (
+                <div className="px-1 mb-2 animate-in fade-in duration-500">
+                    <div className="relative h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner border border-gray-100 dark:border-gray-600">
+                        {/* The Fill */}
+                        <div
+                            className="h-full transition-all duration-1000 ease-out flex items-center justify-end pr-2 relative overflow-hidden"
+                            style={{
+                                width: `${progressMeter}%`,
+                                backgroundColor: getFillColor()
+                            }}
+                        >
+                            <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                        </div>
+                        {/* Text Overlay */}
+                        <div className="absolute inset-0 flex justify-between items-center px-3 text-[10px] font-extrabold uppercase tracking-widest z-10">
+                            <div className="flex items-center gap-1.5 text-gray-600 dark:text-white drop-shadow-sm mix-blend-multiply dark:mix-blend-normal">
+                                <Trophy className="w-3 h-3" />
+                                <span>{completedGlobalCount} Done</span>
+                            </div>
+                            <span className="text-gray-500 dark:text-gray-400">
+                                {globalPendingCount} Dreaming
+                            </span>
+                        </div>
+                        {/* Centered % (Optional) */}
+                         <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
+                            <span className="text-[9px] font-black text-black/20 dark:text-white/20">{Math.round(progressMeter)}%</span>
+                        </div>
                     </div>
                 </div>
             )}

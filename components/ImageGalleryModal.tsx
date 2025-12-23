@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Maximize2, Layers } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Maximize2, Layers, ImageOff } from 'lucide-react';
 import { BucketItem } from '../types';
 
 interface ImageGalleryModalProps {
@@ -10,10 +10,12 @@ interface ImageGalleryModalProps {
 
 export const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ item, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    // Reset index when opening a new item
+    // Reset index and failed state when opening a new item
     setCurrentIndex(0);
+    setFailedImages(new Set());
   }, [item?.id]);
 
   if (!item) return null;
@@ -22,17 +24,63 @@ export const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ item, onCl
 
   if (images.length === 0) return null;
 
+  // If all images failed, close or show error
+  if (failedImages.size === images.length && images.length > 0) {
+      // All images are broken, we could render a "No valid images" state, or just return null to close
+      // Returning null makes it disappear, which matches the behavior of "no images".
+      return null; 
+  }
+
   const handleNext = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setCurrentIndex((prev) => (prev + 1) % images.length);
+    let nextIndex = (currentIndex + 1) % images.length;
+    // Skip failed images
+    let attempts = 0;
+    while(failedImages.has(nextIndex) && attempts < images.length) {
+        nextIndex = (nextIndex + 1) % images.length;
+        attempts++;
+    }
+    setCurrentIndex(nextIndex);
   };
 
   const handlePrev = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+    let prevIndex = (currentIndex - 1 + images.length) % images.length;
+    // Skip failed images
+    let attempts = 0;
+    while(failedImages.has(prevIndex) && attempts < images.length) {
+        prevIndex = (prevIndex - 1 + images.length) % images.length;
+        attempts++;
+    }
+    setCurrentIndex(prevIndex);
+  };
+
+  const handleImageError = (index: number) => {
+      setFailedImages(prev => new Set(prev).add(index));
+      // If current image fails, try to move to next
+      if (index === currentIndex) {
+          // If we have other valid images, move. Otherwise, component will likely return null on next render if all fail.
+          if (failedImages.size + 1 < images.length) {
+              handleNext();
+          }
+      }
   };
 
   const currentImage = images[currentIndex];
+  
+  // If current image is marked as failed (and we haven't moved yet), we shouldn't render it, or handleNext will catch it.
+  // But strictly, let's just ensure we render valid ones.
+  if (failedImages.has(currentIndex)) {
+     // Try to find a valid one immediately if we are stuck on a failed one
+      const validIndex = images.findIndex((_, idx) => !failedImages.has(idx));
+      if (validIndex !== -1 && validIndex !== currentIndex) {
+          setCurrentIndex(validIndex);
+      } else if (validIndex === -1) {
+          return null;
+      }
+  }
+
+  const validImagesCount = images.length - failedImages.size;
 
   return (
     <div 
@@ -66,6 +114,7 @@ export const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ item, onCl
                 key={currentImage}
                 src={currentImage} 
                 alt={`${item.title} - image ${currentIndex + 1}`} 
+                onError={() => handleImageError(currentIndex)}
                 className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl animate-in zoom-in-95 fade-in duration-300"
             />
             
@@ -75,7 +124,7 @@ export const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ item, onCl
             </div>
 
             {/* Navigation Arrows */}
-            {images.length > 1 && (
+            {validImagesCount > 1 && (
                 <>
                     <button 
                         onClick={handlePrev}
@@ -101,26 +150,29 @@ export const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ item, onCl
         </div>
 
         {/* Thumbnails Bar */}
-        {images.length > 1 && (
+        {validImagesCount > 1 && (
             <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-2 p-2 px-6 overflow-x-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
-                {images.map((img, idx) => (
-                    <button
-                        key={idx}
-                        onClick={() => setCurrentIndex(idx)}
-                        className={`relative w-14 h-14 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition-all duration-300 shrink-0 ${
-                            idx === currentIndex 
-                                ? 'border-red-500 scale-110 shadow-lg shadow-red-500/30' 
-                                : 'border-white/10 opacity-40 hover:opacity-100 hover:scale-105'
-                        }`}
-                    >
-                        <img src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
-                        {idx === currentIndex && (
-                             <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center">
-                                 <Maximize2 className="w-4 h-4 text-white" />
-                             </div>
-                        )}
-                    </button>
-                ))}
+                {images.map((img, idx) => {
+                    if (failedImages.has(idx)) return null;
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => setCurrentIndex(idx)}
+                            className={`relative w-14 h-14 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition-all duration-300 shrink-0 ${
+                                idx === currentIndex 
+                                    ? 'border-red-500 scale-110 shadow-lg shadow-red-500/30' 
+                                    : 'border-white/10 opacity-40 hover:opacity-100 hover:scale-105'
+                            }`}
+                        >
+                            <img src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
+                            {idx === currentIndex && (
+                                <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center">
+                                    <Maximize2 className="w-4 h-4 text-white" />
+                                </div>
+                            )}
+                        </button>
+                    );
+                })}
             </div>
         )}
       </div>

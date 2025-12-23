@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, CheckCircle2, Circle, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, CheckCircle2, Circle, Image as ImageIcon, Plus, Trash2, Link } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem } from '../services/geminiService';
 import { BucketItemDraft } from '../types';
 
@@ -29,6 +29,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [draft, setDraft] = useState<BucketItemDraft | null>(null);
+  
+  // Image Management
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [failedPreviewImages, setFailedPreviewImages] = useState<Set<number>>(new Set());
 
   // Draft editing state
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -41,6 +45,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   // Initialize state when initialData changes or mode switches
   useEffect(() => {
+    setFailedPreviewImages(new Set());
+    setNewImageUrl('');
     if (isOpen && initialData && mode === 'edit') {
         setDraft(initialData);
         setSelectedCategory(initialData.category || 'Other');
@@ -76,6 +82,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       const cat = categories.includes(draft.category || '') ? draft.category : 'Other';
       setSelectedCategory(cat || 'Other');
       setSelectedInterests(draft.interests || []);
+      setFailedPreviewImages(new Set()); // Reset on new draft
     }
   }, [draft, categories, mode]);
 
@@ -84,6 +91,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const handleAnalyze = async () => {
     if (!input.trim()) return;
     setIsAnalyzing(true);
+    setFailedPreviewImages(new Set());
     const result = await analyzeBucketItem(input, categories);
     setDraft(result);
     setIsAnalyzing(false);
@@ -91,6 +99,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleSuggest = async () => {
     setIsSuggesting(true);
+    setFailedPreviewImages(new Set());
     const result = await suggestBucketItem(categories, input);
     setDraft(result);
     setInput(result.title);
@@ -100,9 +109,13 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const handleConfirm = () => {
     if (draft) {
       const completedTimestamp = isCompleted ? new Date(completedDate).getTime() : undefined;
+      
+      // Get current images from draft
+      const validImages = draft.images || [];
 
       onAdd({
         ...draft,
+        images: validImages,
         category: selectedCategory,
         interests: selectedInterests,
         owner: selectedOwner,
@@ -127,12 +140,40 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       }
   };
 
-  // Helper to get image array
-  const getDraftImages = () => {
-      if (draft?.images && draft.images.length > 0) return draft.images;
-      if ((draft as any)?.imageUrl) return [(draft as any).imageUrl];
-      return [];
+  // --- Image Handling ---
+
+  const handleAddManualImage = () => {
+    if (!newImageUrl.trim() || !draft) return;
+    
+    // Basic validation
+    try {
+        new URL(newImageUrl);
+    } catch (_) {
+        alert("Please enter a valid URL (e.g., https://example.com/image.jpg)");
+        return;
+    }
+
+    const currentImages = draft.images || [];
+    setDraft({ ...draft, images: [...currentImages, newImageUrl.trim()] });
+    setNewImageUrl('');
   };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+      if (!draft) return;
+      const currentImages = draft.images || [];
+      const updatedImages = currentImages.filter((_, idx) => idx !== indexToRemove);
+      setDraft({ ...draft, images: updatedImages });
+      
+      // Also clean up error state if needed (optional but cleaner)
+      if (failedPreviewImages.has(indexToRemove)) {
+          const newFailed = new Set(failedPreviewImages);
+          newFailed.delete(indexToRemove);
+          setFailedPreviewImages(newFailed);
+      }
+  };
+
+  // Helper to get image array safely
+  const draftImages = draft?.images || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -197,18 +238,58 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               {/* Draft Editor / AI Result Card */}
               <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-900/30 space-y-2">
                 
-                {/* Image Preview List */}
-                {getDraftImages().length > 0 && (
-                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                         {getDraftImages().map((img: string, idx: number) => (
-                             <div key={idx} className="w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-red-200 dark:border-red-800">
-                                <img src={img} alt="Draft" className="w-full h-full object-cover" />
-                             </div>
-                         ))}
-                     </div>
-                )}
+                {/* Image Gallery Management */}
+                <div className="space-y-2">
+                    {draftImages.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                            {draftImages.map((img: string, idx: number) => (
+                                <div key={`${idx}-${img}`} className="relative group/img w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800">
+                                    <img 
+                                        src={img} 
+                                        alt={`Draft ${idx}`} 
+                                        className={`w-full h-full object-cover transition-opacity ${failedPreviewImages.has(idx) ? 'opacity-30' : 'opacity-100'}`}
+                                        onError={() => setFailedPreviewImages(prev => new Set(prev).add(idx))}
+                                    />
+                                    {failedPreviewImages.has(idx) && (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <span className="text-[10px] text-red-500 font-bold">Broken</span>
+                                        </div>
+                                    )}
+                                    <button 
+                                        onClick={() => handleRemoveImage(idx)}
+                                        className="absolute top-1 right-1 p-1 bg-black/50 hover:bg-red-600 text-white rounded-full opacity-0 group-hover/img:opacity-100 transition-all"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    
+                    {/* Add Image Input */}
+                    <div className="flex gap-2 items-center">
+                        <div className="relative flex-grow">
+                            <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input 
+                                type="text"
+                                value={newImageUrl}
+                                onChange={(e) => setNewImageUrl(e.target.value)}
+                                placeholder="Paste image URL..."
+                                className="w-full pl-9 p-2 text-xs bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg outline-none focus:ring-1 focus:ring-red-500 dark:text-white"
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddManualImage()}
+                            />
+                        </div>
+                        <button 
+                            onClick={handleAddManualImage}
+                            disabled={!newImageUrl.trim()}
+                            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
 
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 pt-2">
                    <div className="flex-1 min-w-0 space-y-1">
                         {mode === 'edit' ? (
                             <>
