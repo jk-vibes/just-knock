@@ -30,7 +30,21 @@ const DEFAULT_INTERESTS = ['Hiking', 'Photography', 'History', 'Art', 'Beach', '
 const DEFAULT_PROXIMITY = 2000; // 2km in meters
 
 // --- LIQUID BUCKET COMPONENT ---
-const LiquidBucket = ({ text, className = "w-10 h-10", hideText = false }: { text: string, className?: string, hideText?: boolean }) => (
+const LiquidBucket = ({ 
+    text, 
+    className = "w-10 h-10", 
+    hideText = false,
+    frontColor,
+    backColor,
+    outlineColor
+}: { 
+    text: string, 
+    className?: string, 
+    hideText?: boolean,
+    frontColor?: string,
+    backColor?: string,
+    outlineColor?: string
+}) => (
     <svg viewBox="0 0 512 512" className={`${className} filter drop-shadow-sm transition-transform hover:scale-110 duration-300`}>
         <defs>
             <clipPath id={`bucket-clip-${text}`}>
@@ -39,12 +53,12 @@ const LiquidBucket = ({ text, className = "w-10 h-10", hideText = false }: { tex
         </defs>
         
         {/* Handle */}
-        <path d="M56 160c0-100 400-100 400 0" stroke="currentColor" strokeWidth="40" strokeLinecap="round" fill="none" />
+        <path d="M56 160c0-100 400-100 400 0" stroke={outlineColor || "currentColor"} strokeWidth="30" strokeLinecap="round" fill="none" />
         
         {/* Liquid Group - Approx 70% Fill (Y start ~230) */}
         <g clipPath={`url(#bucket-clip-${text})`}>
              {/* Back Wave */}
-             <path fill="currentColor" opacity="0.5" d="M0 230 Q 128 190 256 230 T 512 230 V 512 H 0 Z">
+             <path fill={backColor || "currentColor"} opacity="0.5" d="M0 230 Q 128 190 256 230 T 512 230 V 512 H 0 Z">
                   <animate attributeName="d" dur="3s" repeatCount="indefinite"
                      values="
                      M0 230 Q 128 190 256 230 T 512 230 V 512 H 0 Z;
@@ -53,7 +67,7 @@ const LiquidBucket = ({ text, className = "w-10 h-10", hideText = false }: { tex
                  />
              </path>
              {/* Front Wave */}
-             <path fill="currentColor" opacity="0.8" d="M0 250 Q 128 290 256 250 T 512 250 V 512 H 0 Z">
+             <path fill={frontColor || "currentColor"} opacity="0.8" d="M0 250 Q 128 290 256 250 T 512 250 V 512 H 0 Z">
                   <animate attributeName="d" dur="2s" repeatCount="indefinite"
                      values="
                      M0 250 Q 128 290 256 250 T 512 250 V 512 H 0 Z;
@@ -64,7 +78,7 @@ const LiquidBucket = ({ text, className = "w-10 h-10", hideText = false }: { tex
         </g>
 
         {/* Body Outline (drawn over liquid to keep crisp edges) */}
-        <path d="M56 160l40 320h320l40-320Z" stroke="currentColor" strokeWidth="40" strokeLinejoin="round" fill="none" />
+        <path d="M56 160l40 320h320l40-320Z" stroke={outlineColor || "currentColor"} strokeWidth="30" strokeLinejoin="round" fill="none" />
         
         {/* Text */}
         {!hideText && (
@@ -76,11 +90,11 @@ const LiquidBucket = ({ text, className = "w-10 h-10", hideText = false }: { tex
 );
 
 // Custom Bucket Logo Component - JK Design with Text
-const BucketLogo = ({ onClickVersion }: { onClickVersion: () => void }) => (
+const BucketLogo = ({ onClickVersion, outlineColor }: { onClickVersion: () => void, outlineColor: string }) => (
     <div className="flex flex-col items-start justify-center">
         <div className="flex items-center gap-2">
             <div className="text-red-500 dark:text-red-500">
-                <LiquidBucket text="JK" className="w-10 h-10" />
+                <LiquidBucket text="JK" className="w-10 h-10" outlineColor={outlineColor} />
             </div>
             <button 
                 onClick={(e) => { e.stopPropagation(); onClickVersion(); }}
@@ -142,6 +156,31 @@ export default function App() {
     return (localStorage.getItem(THEME_KEY) as Theme) || 'system';
   });
 
+  // System Theme Tracking
+  const [isSystemDark, setIsSystemDark] = useState(() => 
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const listener = (e: MediaQueryListEvent) => setIsSystemDark(e.matches);
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, []);
+
+  // Calculate Dynamic Outline Color based on Theme
+  const getThemeOutlineColor = () => {
+    if (theme === 'marvel') return '#ef4444'; // Red
+    if (theme === 'batman') return '#FFD700'; // Yellow
+    if (theme === 'elsa') return '#22d3ee'; // Light Blue
+    if (theme === 'light') return '#000000'; // Black
+    if (theme === 'dark') return '#ffffff'; // White
+    
+    // System Fallback
+    const isDark = theme === 'system' ? isSystemDark : false;
+    return isDark ? '#ffffff' : '#000000';
+  };
+
   // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
@@ -151,7 +190,11 @@ export default function App() {
   // Edit/Action State
   const [editingItem, setEditingItem] = useState<BucketItem | null>(null);
   const [completingItem, setCompletingItem] = useState<BucketItem | null>(null);
-  const [activeToast, setActiveToast] = useState<{title: string, message: string} | null>(null);
+  const [activeToast, setActiveToast] = useState<{
+      title: string; 
+      message: string;
+      action?: { label: string; onClick: () => void };
+  } | null>(null);
 
   // Keep track of notified items to avoid spamming
   const notifiedItems = useRef<Set<string>>(new Set());
@@ -457,7 +500,24 @@ export default function App() {
   const handleDelete = (id: string) => {
     triggerHaptic('warning');
     if (window.confirm("Are you sure you want to delete this wish?")) {
+        const itemToDelete = items.find(i => i.id === id);
         setItems(prev => prev.filter(item => item.id !== id));
+        
+        if (itemToDelete) {
+             setActiveToast({
+                title: "Dream Deleted",
+                message: "It's gone from your list.",
+                action: {
+                    label: "Undo",
+                    onClick: () => {
+                        setItems(prev => [...prev, itemToDelete]);
+                        setActiveToast(null);
+                        triggerHaptic('success');
+                    }
+                }
+            });
+            setTimeout(() => setActiveToast(null), 5000);
+        }
     }
   };
 
@@ -524,11 +584,18 @@ export default function App() {
   // Progress Meter Calculation (0-100)
   const progressMeter = totalItems > 0 ? (completedGlobalCount / totalItems) * 100 : 0;
 
-  // Determine fill color based on theme
+  // Determine fill color (Done items) based on theme
   const getFillColor = () => {
       if (theme === 'batman') return '#fbbf24'; // amber-400
       if (theme === 'elsa') return '#06b6d4'; // cyan-500
-      return '#ef4444'; // red-500 (default/marvel)
+      return '#86efac'; // requested Light Green for default (#4ade80 also good, but 86efac is lighter)
+  };
+
+  // Determine background color (Pending items) based on theme
+  const getPendingColor = () => {
+      if (theme === 'batman') return '#374151'; // gray-700
+      if (theme === 'elsa') return '#cffafe'; // cyan-100
+      return '#fca5a5'; // requested Light Red for default
   };
 
   const filteredItems = items.filter(item => {
@@ -594,7 +661,7 @@ export default function App() {
       {/* In-App Notification Toast */}
       {activeToast && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm animate-in slide-in-from-top-4 fade-in duration-300">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 border border-red-100 dark:border-red-900/30 flex items-start gap-4">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 border border-red-100 dark:border-red-900/30 flex items-center gap-4">
                   <div className="p-2.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full shrink-0 animate-pulse">
                       <Bell className="w-5 h-5" />
                   </div>
@@ -602,6 +669,17 @@ export default function App() {
                       <h4 className="font-bold text-gray-900 dark:text-white text-sm">{activeToast.title}</h4>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{activeToast.message}</p>
                   </div>
+                  {activeToast.action && (
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            activeToast.action?.onClick();
+                        }} 
+                        className="px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors shadow-sm whitespace-nowrap"
+                    >
+                        {activeToast.action.label}
+                    </button>
+                  )}
                   <button onClick={() => setActiveToast(null)} className="text-gray-400 hover:text-gray-600">
                       <X className="w-4 h-4" />
                   </button>
@@ -614,7 +692,7 @@ export default function App() {
         <div className="max-w-2xl mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <BucketLogo onClickVersion={() => setIsChangelogOpen(true)} />
+              <BucketLogo onClickVersion={() => setIsChangelogOpen(true)} outlineColor="#ef4444" />
             </div>
             
             <div className="flex items-center gap-2">
@@ -703,7 +781,10 @@ export default function App() {
             {/* Progress Meter / Slider */}
             {totalItems > 0 && activeTab === 'list' && !searchQuery && (
                 <div className="px-1 mb-2 animate-in fade-in duration-500">
-                    <div className="relative h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner border border-gray-100 dark:border-gray-600">
+                    <div 
+                        className="relative h-6 rounded-full overflow-hidden shadow-inner border border-gray-100 dark:border-gray-600"
+                        style={{ backgroundColor: getPendingColor() }}
+                    >
                         {/* The Fill */}
                         <div
                             className="h-full transition-all duration-1000 ease-out flex items-center justify-end pr-2 relative overflow-hidden"
@@ -716,17 +797,17 @@ export default function App() {
                         </div>
                         {/* Text Overlay */}
                         <div className="absolute inset-0 flex justify-between items-center px-3 text-[10px] font-extrabold uppercase tracking-widest z-10">
-                            <div className="flex items-center gap-1.5 text-gray-600 dark:text-white drop-shadow-sm mix-blend-multiply dark:mix-blend-normal">
+                            <div className="flex items-center gap-1.5 text-gray-800 dark:text-gray-900 mix-blend-normal">
                                 <Trophy className="w-3 h-3" />
                                 <span>{completedGlobalCount} Done</span>
                             </div>
-                            <span className="text-gray-500 dark:text-gray-400">
+                            <span className="text-gray-800 dark:text-gray-900 opacity-90">
                                 {globalPendingCount} Dreaming
                             </span>
                         </div>
                         {/* Centered % (Optional) */}
                          <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
-                            <span className="text-[9px] font-black text-black/20 dark:text-white/20">{Math.round(progressMeter)}%</span>
+                            <span className="text-[9px] font-black text-black/20 dark:text-black/30 drop-shadow-sm">{Math.round(progressMeter)}%</span>
                         </div>
                     </div>
                 </div>
@@ -916,7 +997,14 @@ export default function App() {
              <div className="relative flex items-center justify-center">
                 {/* Bucket Icon - Increased Size */}
                 <div className="text-[#ff0000] dark:text-[#ff0000] transition-transform duration-300 group-hover:-rotate-12 group-active:scale-95 filter drop-shadow-xl">
-                    <LiquidBucket text="fab" hideText={true} className="w-16 h-16" />
+                    <LiquidBucket 
+                        text="fab" 
+                        hideText={true} 
+                        className="w-16 h-16"
+                        frontColor="#FF0000" // New Red
+                        backColor="#39e75f"  // New Green
+                        outlineColor="#FF0000"
+                    />
                 </div>
                 
                 {/* Plus Badge */}

@@ -162,7 +162,6 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                         title="Navigate"
                     >
                         <Navigation className="w-3 h-3" />
-                        {!isCompact && "Navigate"}
                     </button>
                 </div>
             )}
@@ -171,9 +170,9 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
               <button 
                 onClick={(e) => { e.stopPropagation(); onViewImages(item); }}
                 className="flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded-lg border border-purple-100 dark:border-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                title="View Photos"
               >
                 <ImageIcon className="w-3 h-3" />
-                {!isCompact && <span>Photo</span>}
               </button>
             )}
           </div>

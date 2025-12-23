@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone, AlertCircle, Volume2 } from 'lucide-react';
+import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone, AlertCircle, Volume2, FileJson, FileSpreadsheet } from 'lucide-react';
 import { Theme } from '../types';
 import { driveService } from '../services/driveService';
 import { BucketItem } from '../types';
@@ -118,6 +118,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
   
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(items, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `just_knock_export_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Title', 'Description', 'Location', 'Latitude', 'Longitude', 'Category', 'Status', 'Completed Date', 'Owner', 'Interests'];
+    const rows = items.map(item => {
+      const escape = (val: string | undefined) => {
+        if (!val) return '';
+        return `"${String(val).replace(/"/g, '""')}"`;
+      };
+      
+      const status = item.completed ? 'Completed' : 'Pending';
+      const completedDate = item.completedAt ? new Date(item.completedAt).toISOString().split('T')[0] : '';
+      const interests = item.interests ? item.interests.join(';') : '';
+      
+      return [
+        escape(item.id),
+        escape(item.title),
+        escape(item.description),
+        escape(item.locationName),
+        item.coordinates?.latitude || '',
+        item.coordinates?.longitude || '',
+        escape(item.category),
+        escape(status),
+        escape(completedDate),
+        escape(item.owner),
+        escape(interests)
+      ].join(',');
+    });
+    
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `just_knock_export_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleTestNotification = () => {
     const title = "Test Notification 📍";
     const body = "Knock Knock! This is a test for your bucket list radar.";
@@ -405,6 +455,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <span className={`text-xs ${restoreStatus === 'success' ? 'text-green-600' : restoreStatus === 'error' ? 'text-red-600' : 'text-gray-700 dark:text-gray-200'}`}>
                                 {restoreStatus === 'success' ? 'Restored' : restoreStatus === 'error' ? 'Failed' : 'Restore'}
                             </span>
+                        </button>
+                    </div>
+                 </div>
+
+                 {/* Export Section */}
+                 <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Export Data</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button 
+                            onClick={handleExportJSON}
+                            className="flex flex-col items-center justify-center gap-2 p-3 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-xl font-medium transition-colors"
+                        >
+                            <FileJson className="w-5 h-5" />
+                            <span className="text-xs">Export JSON</span>
+                        </button>
+                        <button 
+                            onClick={handleExportCSV}
+                            className="flex flex-col items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl font-medium transition-colors"
+                        >
+                            <FileSpreadsheet className="w-5 h-5" />
+                            <span className="text-xs">Export CSV</span>
                         </button>
                     </div>
                  </div>

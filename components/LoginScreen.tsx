@@ -12,7 +12,7 @@ interface LoginScreenProps {
 
 const BucketLogo = () => (
     <svg width="64" height="64" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-4">
-      <path d="M56 160c0-100 400-100 400 0" stroke="#ef4444" strokeWidth="40" strokeLinecap="round" fill="none"></path>
+      <path d="M56 160c0-100 400-100 400 0" stroke="#ef4444" strokeWidth="30" strokeLinecap="round" fill="none"></path>
       <path d="M56 160l40 320h320l40-320Z" fill="#ef4444"></path>
       <text x="256" y="380" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize="160" fill="#ffffff" textAnchor="middle">JK</text>
     </svg>
