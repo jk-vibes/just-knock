@@ -5,6 +5,7 @@ import { Theme } from '../types';
 import { driveService } from '../services/driveService';
 import { BucketItem } from '../types';
 import { sendNotification, speak } from '../utils/geo';
+import { CategoryIcon } from './CategoryIcon';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -384,6 +385,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                          {activeTab === 'family' && (
                             <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xs font-bold border border-purple-200 dark:border-purple-800">
                                 {getInitials(item)}
+                            </div>
+                         )}
+                         {activeTab === 'categories' && (
+                            <div className="p-1.5 bg-red-100 dark:bg-red-900/30 rounded-md text-red-500 dark:text-red-400">
+                                <CategoryIcon category={item} className="w-4 h-4" />
                             </div>
                          )}
                          <span className="text-sm text-gray-700 dark:text-gray-200">{item}</span>

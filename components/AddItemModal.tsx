@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, CheckCircle2, Circle, Image as ImageIcon, Plus, Trash2, Link, Sun } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem } from '../services/geminiService';
 import { BucketItemDraft, BucketItem } from '../types';
+import { CategoryIcon } from './CategoryIcon';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -402,19 +403,29 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 )}
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block flex items-center gap-2">
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 block flex items-center gap-2">
                     <List className="w-3 h-3" /> Category
                   </label>
-                  <select 
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-800 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-                  >
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                    <option value="Other">Other</option>
-                  </select>
+                  
+                  {/* Grid of Buttons for Categories */}
+                  <div className="grid grid-cols-3 gap-2">
+                      {[...categories, 'Other'].map(cat => {
+                          const isSelected = selectedCategory === cat;
+                          return (
+                              <button
+                                  key={cat}
+                                  onClick={() => setSelectedCategory(cat)}
+                                  className={`p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 ${isSelected 
+                                      ? 'bg-red-50 dark:bg-red-900/30 border-red-500 text-red-600 dark:text-red-300 shadow-sm scale-105' 
+                                      : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                  }`}
+                              >
+                                  <CategoryIcon category={cat} className={`w-5 h-5 ${isSelected ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-400'}`} />
+                                  <span className="text-[10px] font-medium truncate w-full text-center">{cat}</span>
+                              </button>
+                          );
+                      })}
+                  </div>
                 </div>
 
                 <div>

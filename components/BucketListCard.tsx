@@ -3,6 +3,7 @@ import React from 'react';
 import { MapPin, Navigation, CheckCircle2, Circle, Trash2, Pencil, Image as ImageIcon, Calendar } from 'lucide-react';
 import { BucketItem, Coordinates, Theme } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
+import { CategoryIcon } from './CategoryIcon';
 
 interface BucketListCardProps {
   item: BucketItem;
@@ -11,6 +12,8 @@ interface BucketListCardProps {
   onDelete: (id: string) => void;
   onEdit: (item: BucketItem) => void;
   onViewImages: (item: BucketItem) => void;
+  onCategoryClick?: (category: string) => void;
+  onInterestClick?: (interest: string) => void;
   isCompact?: boolean;
   proximityRange?: number;
   theme?: Theme;
@@ -59,6 +62,8 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
   onDelete, 
   onEdit,
   onViewImages,
+  onCategoryClick,
+  onInterestClick,
   isCompact = false,
   proximityRange = 10000,
   theme
@@ -117,9 +122,13 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                         </span>
                     )}
                     {item.category && !isCompact && (
-                         <span className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                         <button 
+                            onClick={(e) => { e.stopPropagation(); onCategoryClick && onCategoryClick(item.category!); }}
+                            className="flex items-center gap-1 text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md whitespace-nowrap hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                         >
+                            <CategoryIcon category={item.category} className="w-3 h-3" />
                             {item.category}
-                         </span>
+                         </button>
                     )}
                 </div>
             </div>
@@ -134,9 +143,13 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
           {item.interests && item.interests.length > 0 && !isCompact && (
             <div className="flex flex-wrap gap-1.5 mb-1.5 ml-7">
                 {item.interests.map(tag => (
-                    <span key={tag} className="text-[10px] font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 px-2 py-0.5 rounded-full border border-red-100 dark:border-red-900/20">
+                    <button 
+                        key={tag} 
+                        onClick={(e) => { e.stopPropagation(); onInterestClick && onInterestClick(tag); }}
+                        className="text-[10px] font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 px-2 py-0.5 rounded-full border border-red-100 dark:border-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                    >
                         #{tag}
-                    </span>
+                    </button>
                 ))}
             </div>
           )}

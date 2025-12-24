@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell } from 'lucide-react';
+import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -17,6 +17,7 @@ import { calculateDistance, requestNotificationPermission, sendNotification, for
 import { MOCK_BUCKET_ITEMS, generateMockItems } from './utils/mockData';
 import { triggerHaptic } from './utils/haptics';
 import { driveService } from './services/driveService';
+import { CategoryIcon } from './components/CategoryIcon';
 
 const STORAGE_KEY = 'jk_bucket_items';
 const THEME_KEY = 'jk_theme';
@@ -216,6 +217,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
   const [filterOwner, setFilterOwner] = useState<string | null>(null); // null = All
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterInterest, setFilterInterest] = useState<string | null>(null);
   const [isCompact, setIsCompact] = useState(false);
 
   // Edit/Action State
@@ -625,6 +628,27 @@ export default function App() {
       triggerHaptic('medium');
   };
 
+  const handleCategoryClick = (category: string) => {
+      if (filterCategory === category) {
+          setFilterCategory(null);
+      } else {
+          setFilterCategory(category);
+      }
+      triggerHaptic('light');
+      // If we are in Map view, switch to list to see filtered results clearly
+      if (activeTab === 'map') setActiveTab('list');
+  };
+
+  const handleInterestClick = (interest: string) => {
+      if (filterInterest === interest) {
+          setFilterInterest(null);
+      } else {
+          setFilterInterest(interest);
+      }
+      triggerHaptic('light');
+      if (activeTab === 'map') setActiveTab('list');
+  };
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
@@ -695,6 +719,14 @@ export default function App() {
         } else {
             if (item.owner !== filterOwner) return false;
         }
+    }
+
+    // 4. Category Filter
+    if (filterCategory && item.category !== filterCategory) return false;
+
+    // 5. Interest Filter
+    if (filterInterest) {
+        if (!item.interests || !item.interests.includes(filterInterest)) return false;
     }
     
     return true;
@@ -847,28 +879,58 @@ export default function App() {
       <main className="flex-grow overflow-y-auto no-scrollbar w-full">
         <div className="max-w-2xl mx-auto px-4 py-2 space-y-2">
             
-            {/* Active Search Filter Chip */}
-            {searchQuery && (
-                <div className="px-1 mb-2 animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center justify-between bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl border border-red-100 dark:border-red-900/30">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            <Search className="w-4 h-4 text-red-500 shrink-0" />
-                            <span className="text-sm text-red-900 dark:text-red-100 truncate">
-                                Searching: <span className="font-bold">{searchQuery}</span>
+            {/* Active Filters Bar */}
+            {(searchQuery || filterCategory || filterInterest) && (
+                <div className="px-1 mb-2 animate-in fade-in slide-in-from-top-2 flex flex-wrap gap-2">
+                    {searchQuery && (
+                        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-full border border-red-100 dark:border-red-900/30">
+                            <Search className="w-3.5 h-3.5 text-red-500" />
+                            <span className="text-xs font-bold text-red-900 dark:text-red-100 max-w-[150px] truncate">
+                                "{searchQuery}"
                             </span>
+                            <button 
+                                onClick={() => { setSearchQuery(''); triggerHaptic('light'); }}
+                                className="p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
                         </div>
-                        <button 
-                            onClick={() => { setSearchQuery(''); triggerHaptic('light'); }}
-                            className="p-1.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 transition-colors shrink-0"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
+                    )}
+
+                    {filterCategory && (
+                        <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900/30">
+                            <CategoryIcon category={filterCategory} className="w-3.5 h-3.5 text-blue-500" />
+                            <span className="text-xs font-bold text-blue-900 dark:text-blue-100">
+                                {filterCategory}
+                            </span>
+                            <button 
+                                onClick={() => { setFilterCategory(null); triggerHaptic('light'); }}
+                                className="p-0.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-500 transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    )}
+
+                    {filterInterest && (
+                        <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-900/30">
+                            <Tag className="w-3.5 h-3.5 text-green-500" />
+                            <span className="text-xs font-bold text-green-900 dark:text-green-100">
+                                {filterInterest}
+                            </span>
+                            <button 
+                                onClick={() => { setFilterInterest(null); triggerHaptic('light'); }}
+                                className="p-0.5 rounded-full hover:bg-green-100 dark:hover:bg-green-900/40 text-green-500 transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* Progress Meter / Slider */}
-            {totalItems > 0 && activeTab === 'list' && !searchQuery && (
+            {totalItems > 0 && activeTab === 'list' && !searchQuery && !filterCategory && !filterInterest && (
                 <div className="px-1 mb-2 animate-in fade-in duration-500">
                     <div 
                         className="relative h-6 rounded-full overflow-hidden shadow-inner border border-gray-100 dark:border-gray-600"
@@ -1026,7 +1088,7 @@ export default function App() {
                                             {filterStatus === 'completed' ? <Trophy className="w-8 h-8 text-gray-400" /> : <LayoutList className="w-8 h-8 text-gray-400" />}
                                         </div>
                                         <p className="text-gray-500 dark:text-gray-400 font-medium">
-                                            {searchQuery ? 'No matching dreams found.' : 'Your list is empty. Start dreaming!'}
+                                            {searchQuery || filterCategory || filterInterest ? 'No matching dreams found.' : 'Your list is empty. Start dreaming!'}
                                         </p>
                                     </div>
                                 ) : (
@@ -1039,6 +1101,8 @@ export default function App() {
                                             onDelete={handleDelete}
                                             onEdit={handleEditClick}
                                             onViewImages={setViewingItemImages}
+                                            onCategoryClick={handleCategoryClick}
+                                            onInterestClick={handleInterestClick}
                                             isCompact={isCompact}
                                             proximityRange={proximityRange}
                                             theme={theme}
@@ -1094,14 +1158,14 @@ export default function App() {
         >
              <div className="relative flex items-center justify-center">
                 {/* Bucket Icon - Increased Size */}
-                <div className="text-[#ff0000] dark:text-[#ff0000] transition-transform duration-300 group-hover:-rotate-12 group-active:scale-95 filter drop-shadow-xl">
+                <div className={`transition-transform duration-300 group-hover:-rotate-12 group-active:scale-95 filter drop-shadow-xl ${theme === 'elsa' ? 'text-cyan-500' : 'text-[#ff0000] dark:text-[#ff0000]'}`}>
                     <LiquidBucket 
                         text="fab" 
                         hideText={true} 
                         className="w-20 h-20"
-                        frontColor="#ff4d4d" // Lighter Red
-                        backColor="#39e75f"  // Green
-                        outlineColor="#FF0000"
+                        frontColor={theme === 'elsa' ? "#67e8f9" : "#ff4d4d"} // Cyan-300 for Elsa, Red for others
+                        backColor={theme === 'elsa' ? "#22d3ee" : "#39e75f"}  // Cyan-400 for Elsa, Green for others
+                        outlineColor={theme === 'elsa' ? "#06b6d4" : "#FF0000"} // Cyan-500 for Elsa, Red for others
                     />
                 </div>
                 

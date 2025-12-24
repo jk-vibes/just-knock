@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { BucketItem } from '../types';
-import { Plane, Mountain, Utensils, Palette, Camera, Landmark, Music, Star, Briefcase, Heart, Globe, Footprints, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { CategoryIcon } from './CategoryIcon';
 
 interface TimelineViewProps {
   items: BucketItem[];
@@ -94,7 +95,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ items, onEdit, pendi
                   {/* CENTER ICON */}
                   <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center z-20">
                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-4 border-gray-50 dark:border-gray-900 shadow-md flex items-center justify-center transition-transform hover:scale-110 ${isContentLeft ? 'bg-white dark:bg-gray-800 text-gray-500' : 'bg-white dark:bg-gray-800 text-gray-500'}`}>
-                       <CategoryIcon category={item.category} />
+                       <TimelineCategoryIcon category={item.category} />
                     </div>
                   </div>
 
@@ -161,20 +162,22 @@ const TimelineContent = ({ item, onClick, align }: { item: BucketItem, onClick: 
     </div>
 );
 
-const CategoryIcon = ({ category }: { category?: string }) => {
-    const iconProps = { className: "w-5 h-5 md:w-6 md:h-6 stroke-[1.5]" };
+const TimelineCategoryIcon = ({ category }: { category?: string }) => {
+    // Determine color based on category
+    let colorClass = "text-gray-400";
     switch (category) {
-        case 'Adventure': return <Mountain {...iconProps} className={`${iconProps.className} text-orange-500`} />;
-        case 'Travel': return <Plane {...iconProps} className={`${iconProps.className} text-blue-500`} />;
-        case 'Food': return <Utensils {...iconProps} className={`${iconProps.className} text-red-500`} />;
-        case 'Culture': return <Landmark {...iconProps} className={`${iconProps.className} text-purple-500`} />;
-        case 'Nature': return <Globe {...iconProps} className={`${iconProps.className} text-green-500`} />;
-        case 'Luxury': return <Star {...iconProps} className={`${iconProps.className} text-yellow-500`} />;
-        case 'Personal Growth': return <Heart {...iconProps} className={`${iconProps.className} text-pink-500`} />;
-        case 'Music': return <Music {...iconProps} className={`${iconProps.className} text-indigo-500`} />;
-        case 'Photography': return <Camera {...iconProps} className={`${iconProps.className} text-cyan-500`} />;
-        case 'Art': return <Palette {...iconProps} className={`${iconProps.className} text-rose-500`} />;
-        case 'Career': return <Briefcase {...iconProps} className={`${iconProps.className} text-slate-500`} />;
-        default: return <Footprints {...iconProps} className={`${iconProps.className} text-gray-400`} />;
+        case 'Adventure': colorClass = "text-orange-500"; break;
+        case 'Travel': colorClass = "text-blue-500"; break;
+        case 'Food': colorClass = "text-red-500"; break;
+        case 'Culture': colorClass = "text-purple-500"; break;
+        case 'Nature': colorClass = "text-green-500"; break;
+        case 'Luxury': colorClass = "text-yellow-500"; break;
+        case 'Personal Growth': colorClass = "text-pink-500"; break;
+        case 'Music': colorClass = "text-indigo-500"; break;
+        case 'Photography': colorClass = "text-cyan-500"; break;
+        case 'Art': colorClass = "text-rose-500"; break;
+        case 'Career': colorClass = "text-slate-500"; break;
     }
+    
+    return <CategoryIcon category={category} className={`w-5 h-5 md:w-6 md:h-6 stroke-[1.5] ${colorClass}`} />;
 };
