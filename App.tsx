@@ -906,7 +906,7 @@ export default function App() {
             <div className="flex flex-wrap gap-2 justify-between items-center px-1 mb-2">
                 
                 <div className="flex items-center gap-2">
-                    {/* View Switcher (List/Map) */}
+                    {/* View Switcher (List/Map) + Search */}
                     <div data-tour="view-toggle" className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
                         <button 
                             onClick={() => { setActiveTab('list'); triggerHaptic('light'); }}
@@ -922,19 +922,20 @@ export default function App() {
                         >
                             <MapIcon className="w-4 h-4" />
                         </button>
-                    </div>
+                        
+                        <div className="w-px bg-gray-100 dark:bg-gray-700 mx-0.5 my-1"></div>
 
-                    {/* NEW Search Button */}
-                    <button
-                        onClick={() => {
-                            setIsSearchOpen(true);
-                            triggerHaptic('medium');
-                        }}
-                        className={`p-2 rounded-lg border transition-colors shadow-sm ${searchQuery ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-                        title="Search"
-                    >
-                        <Search className="w-4 h-4" />
-                    </button>
+                        <button
+                            onClick={() => {
+                                setIsSearchOpen(true);
+                                triggerHaptic('medium');
+                            }}
+                            className={`p-1.5 rounded-md transition-all ${searchQuery ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                            title="Search"
+                        >
+                            <Search className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* List Specific Controls */}
@@ -950,14 +951,6 @@ export default function App() {
                                     title="All"
                                 >
                                     <Users className="w-3.5 h-3.5" />
-                                </button>
-                                {/* Me */}
-                                <button 
-                                    onClick={() => { setFilterOwner('Me'); triggerHaptic('light'); }}
-                                    className={`relative z-20 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === 'Me' ? 'bg-purple-600 text-white border-purple-200 scale-110' : 'bg-purple-100 text-purple-600 border-white dark:border-gray-700'}`}
-                                    title="Me"
-                                >
-                                    ME
                                 </button>
                                 {/* Others */}
                                 {familyMembers.map((member, i) => (
