@@ -989,10 +989,10 @@ export default function App() {
 
                         <button
                             onClick={() => {
-                                setIsSearchOpen(true);
+                                setIsSearchOpen(!isSearchOpen);
                                 triggerHaptic('medium');
                             }}
-                            className={`p-1.5 rounded-md transition-all ${searchQuery ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                            className={`p-1.5 rounded-md transition-all ${isSearchOpen || searchQuery ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
                             title="Search"
                         >
                             <Search className="w-4 h-4" />
@@ -1117,30 +1117,33 @@ export default function App() {
         </div>
       </main>
 
-      {/* Search Overlay Input (When open) */}
+      {/* Tiny Overlay Popup for Search (Only Input) */}
       {isSearchOpen && (
-          <div className="fixed inset-0 z-40 bg-white/90 dark:bg-gray-900/95 backdrop-blur-sm p-4 animate-in fade-in slide-in-from-top-10">
-              <div className="max-w-2xl mx-auto">
-                  <div className="flex items-center gap-3">
-                      <button onClick={() => setIsSearchOpen(false)} className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
-                          <ArrowLeft className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] w-[90%] max-w-md animate-in slide-in-from-top-4 duration-200">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-3 border border-red-100 dark:border-red-900/30 flex items-center gap-3">
+                  <Search className="w-5 h-5 text-gray-400 ml-1" />
+                  <input 
+                      autoFocus
+                      type="text" 
+                      placeholder="Search dreams, locations..." 
+                      value={searchQuery}
+                      onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          if(activeTab !== 'list') setActiveTab('list');
+                      }}
+                      className="flex-1 bg-transparent outline-none text-gray-900 dark:text-white placeholder-gray-400 text-sm font-medium"
+                  />
+                  {searchQuery && (
+                      <button onClick={() => setSearchQuery('')} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 transition-colors">
+                          <X className="w-4 h-4" />
                       </button>
-                      <div className="flex-1 relative">
-                          <input 
-                              autoFocus
-                              type="text" 
-                              placeholder="Search your dreams..." 
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="w-full text-lg bg-transparent border-b-2 border-red-500 py-2 outline-none text-gray-900 dark:text-white placeholder-gray-400"
-                          />
-                          {searchQuery && (
-                              <button onClick={() => setSearchQuery('')} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                  <X className="w-5 h-5" />
-                              </button>
-                          )}
-                      </div>
-                  </div>
+                  )}
+                  <button 
+                    onClick={() => setIsSearchOpen(false)} 
+                    className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                      Done
+                  </button>
               </div>
           </div>
       )}
