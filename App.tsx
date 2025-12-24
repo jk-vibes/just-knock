@@ -966,16 +966,7 @@ export default function App() {
                             </div>
                         )}
 
-                        {/* Compact Toggle */}
-                        <button
-                            onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }}
-                            className={`p-1.5 rounded-lg border transition-colors ${isCompact ? 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600'}`}
-                            title="Compact View"
-                        >
-                            <AlignJustify className="w-4 h-4" />
-                        </button>
-
-                        {/* Status Filter Tabs */}
+                        {/* Status Filter Tabs + Compact Toggle */}
                         <div className="bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm flex gap-0.5">
                             <button
                                 onClick={() => { setFilterStatus('all'); triggerHaptic('light'); }}
@@ -997,6 +988,16 @@ export default function App() {
                                 title="Done"
                             >
                                 <CheckCircle2 className="w-4 h-4" />
+                            </button>
+
+                            <div className="w-px bg-gray-100 dark:bg-gray-700 mx-0.5 my-1"></div>
+
+                            <button
+                                onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }}
+                                className={`px-2 py-1.5 rounded-md transition-all flex items-center justify-center ${isCompact ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                title="Compact View"
+                            >
+                                <AlignJustify className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
