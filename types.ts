@@ -17,6 +17,7 @@ export interface BucketItem {
   category?: string;
   interests?: string[];
   owner?: string;
+  bestTimeToVisit?: string;
 }
 
 export interface BucketItemDraft {
@@ -31,6 +32,7 @@ export interface BucketItemDraft {
   owner?: string;
   isCompleted?: boolean;
   completedAt?: number;
+  bestTimeToVisit?: string;
 }
 
 export enum AppView {

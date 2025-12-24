@@ -10,6 +10,7 @@ import { MapView } from './components/MapView';
 import { CompleteDateModal } from './components/CompleteDateModal';
 import { ChangelogModal } from './components/ChangelogModal';
 import { ImageGalleryModal } from './components/ImageGalleryModal';
+import { OnboardingTour } from './components/OnboardingTour';
 import { BucketItem, BucketItemDraft, Coordinates, Theme, User } from './types';
 import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance, speak, getDistanceSpeech } from './utils/geo';
 import { MOCK_BUCKET_ITEMS, generateMockItems } from './utils/mockData';
@@ -23,6 +24,7 @@ const CAT_KEY = 'jk_categories';
 const INT_KEY = 'jk_interests';
 const PROX_KEY = 'jk_proximity';
 const FAM_KEY = 'jk_family_members';
+const ONBOARDING_KEY = 'jk_onboarding_completed';
 
 // Default Data
 const DEFAULT_CATEGORIES = ['Adventure', 'Travel', 'Food', 'Culture', 'Nature', 'Luxury', 'Personal Growth'];
@@ -155,6 +157,21 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(() => {
     return (localStorage.getItem(THEME_KEY) as Theme) || 'system';
   });
+  
+  // Onboarding Tour State
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check onboarding status on mount or login
+  useEffect(() => {
+      if (user) {
+          const hasCompleted = localStorage.getItem(ONBOARDING_KEY);
+          if (!hasCompleted) {
+              // Short delay to allow UI to settle
+              const timer = setTimeout(() => setShowOnboarding(true), 1000);
+              return () => clearTimeout(timer);
+          }
+      }
+  }, [user]);
 
   // System Theme Tracking
   const [isSystemDark, setIsSystemDark] = useState(() => 
@@ -434,7 +451,8 @@ export default function App() {
                 images: draft.images || item.images, // Preserve new images or keep old
                 // Update completion status and date if changed
                 completed: draft.isCompleted !== undefined ? draft.isCompleted : item.completed,
-                completedAt: draft.isCompleted ? draft.completedAt : (draft.isCompleted === false ? undefined : item.completedAt)
+                completedAt: draft.isCompleted ? draft.completedAt : (draft.isCompleted === false ? undefined : item.completedAt),
+                bestTimeToVisit: draft.bestTimeToVisit
             } : item
         ));
         setEditingItem(null);
@@ -454,7 +472,8 @@ export default function App() {
         completedAt: draft.isCompleted ? draft.completedAt : undefined,
         category: draft.category,
         interests: draft.interests,
-        owner: draft.owner
+        owner: draft.owner,
+        bestTimeToVisit: draft.bestTimeToVisit
         };
         setItems(prev => [newItem, ...prev]);
     }
@@ -648,6 +667,7 @@ export default function App() {
                     onLogout={() => {}}
                     proximityRange={proximityRange}
                     onProximityRangeChange={setProximityRange}
+                    onRestartTour={() => {}}
                 />
             </div>
             <LoginScreen onLogin={(u) => { triggerHaptic('success'); setUser(u); }} />
@@ -658,6 +678,15 @@ export default function App() {
   return (
     <div className="h-screen overflow-hidden bg-[#f8fafc] dark:bg-gray-900 transition-colors duration-300 flex flex-col relative">
       
+      {/* Onboarding Tour */}
+      <OnboardingTour 
+        isActive={showOnboarding}
+        onComplete={() => {
+            setShowOnboarding(false);
+            localStorage.setItem(ONBOARDING_KEY, 'true');
+        }}
+      />
+
       {/* In-App Notification Toast */}
       {activeToast && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm animate-in slide-in-from-top-4 fade-in duration-300">
@@ -709,6 +738,7 @@ export default function App() {
               </button>
 
               <button 
+                data-tour="radar-btn"
                 onClick={() => {
                     setIsRadarOn(!isRadarOn);
                     triggerHaptic('medium');
@@ -727,6 +757,7 @@ export default function App() {
               </button>
 
               <button
+                data-tour="settings-btn"
                 onClick={() => {
                     setIsSettingsOpen(true);
                     triggerHaptic('light');
@@ -817,7 +848,7 @@ export default function App() {
             <div className="flex flex-wrap gap-2 justify-between items-center px-1 mb-2">
                 
                 {/* View Switcher (List/Map) */}
-                <div className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
+                <div data-tour="view-toggle" className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
                     <button 
                         onClick={() => { setActiveTab('list'); triggerHaptic('light'); }}
                         className={`p-1.5 rounded-md transition-all ${activeTab === 'list' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
@@ -987,6 +1018,7 @@ export default function App() {
       {/* Floating Action Button (FAB) */}
       {!isSearchOpen && (
         <button
+            data-tour="add-btn"
             onClick={() => {
                 setIsAddModalOpen(true);
                 triggerHaptic('medium');
@@ -1029,6 +1061,8 @@ export default function App() {
         familyMembers={familyMembers}
         initialData={editingItem}
         mode={editingItem ? 'edit' : 'add'}
+        items={items}
+        editingId={editingItem?.id}
       />
       
       <SettingsModal 
@@ -1053,6 +1087,10 @@ export default function App() {
         onRestore={handleRestoreData}
         proximityRange={proximityRange}
         onProximityRangeChange={setProximityRange}
+        onRestartTour={() => {
+            setIsSettingsOpen(false);
+            setTimeout(() => setShowOnboarding(true), 300);
+        }}
       />
 
       <CompleteDateModal 

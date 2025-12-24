@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MapPin, Navigation, CheckCircle2, Circle, Trash2, Pencil, Image as ImageIcon } from 'lucide-react';
+import { MapPin, Navigation, CheckCircle2, Circle, Trash2, Pencil, Image as ImageIcon, Calendar } from 'lucide-react';
 import { BucketItem, Coordinates, Theme } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 
@@ -146,6 +146,13 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
               <div className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded-lg border border-transparent dark:border-gray-700 max-w-[150px] truncate">
                 <MapPin className="w-3 h-3 text-red-500 shrink-0" />
                 <span className="truncate">{item.locationName}</span>
+              </div>
+            )}
+
+            {item.bestTimeToVisit && !isCompact && (
+              <div className="flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-lg border border-orange-100 dark:border-orange-900/30">
+                <Calendar className="w-3 h-3 shrink-0" />
+                <span className="truncate max-w-[120px]">{item.bestTimeToVisit}</span>
               </div>
             )}
             

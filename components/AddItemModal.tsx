@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, CheckCircle2, Circle, Image as ImageIcon, Plus, Trash2, Link } from 'lucide-react';
+import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, CheckCircle2, Circle, Image as ImageIcon, Plus, Trash2, Link, Sun } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem } from '../services/geminiService';
-import { BucketItemDraft } from '../types';
+import { BucketItemDraft, BucketItem } from '../types';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -13,6 +13,8 @@ interface AddItemModalProps {
   familyMembers?: string[];
   initialData?: BucketItemDraft | null;
   mode?: 'add' | 'edit';
+  items: BucketItem[]; // For duplicate checking
+  editingId?: string; // For duplicate checking exclusion
 }
 
 export const AddItemModal: React.FC<AddItemModalProps> = ({ 
@@ -23,7 +25,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   availableInterests,
   familyMembers = [],
   initialData,
-  mode = 'add'
+  mode = 'add',
+  items,
+  editingId
 }) => {
   const [input, setInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -31,7 +35,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [draft, setDraft] = useState<BucketItemDraft | null>(null);
   
   // Image Management
-  const [newImageUrl, setNewImageUrl] = useState('');
   const [failedPreviewImages, setFailedPreviewImages] = useState<Set<number>>(new Set());
 
   // Draft editing state
@@ -46,7 +49,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   // Initialize state when initialData changes or mode switches
   useEffect(() => {
     setFailedPreviewImages(new Set());
-    setNewImageUrl('');
     if (isOpen && initialData && mode === 'edit') {
         setDraft(initialData);
         setSelectedCategory(initialData.category || 'Other');
@@ -108,6 +110,19 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleConfirm = () => {
     if (draft) {
+      // Duplicate Check
+      const normalizedTitle = draft.title.trim().toLowerCase();
+      const isDuplicate = items.some(item => {
+          // Skip the current item if editing
+          if (mode === 'edit' && item.id === editingId) return false;
+          return item.title.trim().toLowerCase() === normalizedTitle;
+      });
+
+      if (isDuplicate) {
+          alert("You already have this wish on your list! Try adding something new.");
+          return;
+      }
+
       const completedTimestamp = isCompleted ? new Date(completedDate).getTime() : undefined;
       
       // Get current images from draft
@@ -140,31 +155,13 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       }
   };
 
-  // --- Image Handling ---
-
-  const handleAddManualImage = () => {
-    if (!newImageUrl.trim() || !draft) return;
-    
-    // Basic validation
-    try {
-        new URL(newImageUrl);
-    } catch (_) {
-        alert("Please enter a valid URL (e.g., https://example.com/image.jpg)");
-        return;
-    }
-
-    const currentImages = draft.images || [];
-    setDraft({ ...draft, images: [...currentImages, newImageUrl.trim()] });
-    setNewImageUrl('');
-  };
-
   const handleRemoveImage = (indexToRemove: number) => {
       if (!draft) return;
       const currentImages = draft.images || [];
       const updatedImages = currentImages.filter((_, idx) => idx !== indexToRemove);
       setDraft({ ...draft, images: updatedImages });
       
-      // Also clean up error state if needed (optional but cleaner)
+      // Also clean up error state if needed
       if (failedPreviewImages.has(indexToRemove)) {
           const newFailed = new Set(failedPreviewImages);
           newFailed.delete(indexToRemove);
@@ -240,7 +237,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 
                 {/* Image Gallery Management */}
                 <div className="space-y-2">
-                    {draftImages.length > 0 && (
+                    {draftImages.length > 0 ? (
                         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                             {draftImages.map((img: string, idx: number) => (
                                 <div key={`${idx}-${img}`} className="relative group/img w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800">
@@ -264,29 +261,11 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                                 </div>
                             ))}
                         </div>
-                    )}
-                    
-                    {/* Add Image Input */}
-                    <div className="flex gap-2 items-center">
-                        <div className="relative flex-grow">
-                            <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input 
-                                type="text"
-                                value={newImageUrl}
-                                onChange={(e) => setNewImageUrl(e.target.value)}
-                                placeholder="Paste image URL..."
-                                className="w-full pl-9 p-2 text-xs bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg outline-none focus:ring-1 focus:ring-red-500 dark:text-white"
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddManualImage()}
-                            />
+                    ) : (
+                        <div className="text-xs text-red-400 dark:text-red-300 italic text-center py-2">
+                            No images found.
                         </div>
-                        <button 
-                            onClick={handleAddManualImage}
-                            disabled={!newImageUrl.trim()}
-                            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
-                    </div>
+                    )}
                 </div>
 
                 <div className="flex items-start gap-3 pt-2">
@@ -324,16 +303,33 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                                 placeholder="Location Name"
                             />
                          </div>
+                         <div className="flex items-center gap-2">
+                            <Sun className="w-4 h-4 text-orange-500" />
+                            <input 
+                                value={draft.bestTimeToVisit || ''}
+                                onChange={(e) => handleDraftChange('bestTimeToVisit', e.target.value)}
+                                className="text-xs font-medium text-red-600 dark:text-red-400 bg-transparent border-b border-red-200 dark:border-red-800 focus:outline-none focus:border-red-500 w-full"
+                                placeholder="Best time to visit (e.g. Summer)"
+                            />
+                         </div>
                     </>
                 ) : (
                     <>
                         <p className="text-red-700 dark:text-red-300 text-sm mt-1">{draft.description}</p>
-                        {draft.locationName && (
-                        <div className="flex items-center gap-2 mt-2 text-xs font-medium text-red-600 dark:text-red-400 bg-white/50 dark:bg-black/20 w-fit px-2 py-1 rounded-full">
-                            <MapPin className="w-3 h-3" />
-                            {draft.locationName}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {draft.locationName && (
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-white/50 dark:bg-black/20 px-2 py-1 rounded-full">
+                                <MapPin className="w-3 h-3" />
+                                {draft.locationName}
+                            </div>
+                            )}
+                            {draft.bestTimeToVisit && (
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-orange-600 dark:text-orange-400 bg-white/50 dark:bg-black/20 px-2 py-1 rounded-full">
+                                <Sun className="w-3 h-3" />
+                                {draft.bestTimeToVisit}
+                            </div>
+                            )}
                         </div>
-                        )}
                     </>
                 )}
               </div>

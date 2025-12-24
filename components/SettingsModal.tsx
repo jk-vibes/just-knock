@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone, AlertCircle, Volume2, FileJson, FileSpreadsheet } from 'lucide-react';
+import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone, AlertCircle, Volume2, FileJson, FileSpreadsheet, PlayCircle } from 'lucide-react';
 import { Theme } from '../types';
 import { driveService } from '../services/driveService';
 import { BucketItem } from '../types';
@@ -29,6 +29,7 @@ interface SettingsModalProps {
   onRestore?: (items: BucketItem[]) => void;
   proximityRange: number;
   onProximityRangeChange: (range: number) => void;
+  onRestartTour?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -52,7 +53,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   items = [],
   onRestore,
   proximityRange,
-  onProximityRangeChange
+  onProximityRangeChange,
+  onRestartTour
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'categories' | 'interests' | 'family' | 'data'>('general');
   const [newItemInput, setNewItemInput] = useState('');
@@ -331,6 +333,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {onRestartTour && (
+                    <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <button 
+                            onClick={onRestartTour}
+                            className="w-full flex items-center justify-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 rounded-xl font-medium hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                        >
+                            <PlayCircle className="w-5 h-5" />
+                            Restart Tutorial
+                        </button>
+                    </div>
+                )}
             </div>
           )}
 

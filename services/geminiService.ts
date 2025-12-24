@@ -39,9 +39,13 @@ const bucketItemSchema: Schema = {
       type: Type.ARRAY,
       items: { type: Type.STRING },
       description: "A list of 1-3 interest tags related to this item."
+    },
+    bestTimeToVisit: {
+        type: Type.STRING,
+        description: "The best months or season to visit (e.g., 'May to September' or 'Spring')."
     }
   },
-  required: ["title", "description", "locationName", "latitude", "longitude", "imageKeyword", "category", "interests"]
+  required: ["title", "description", "locationName", "latitude", "longitude", "imageKeyword", "category", "interests", "bestTimeToVisit"]
 };
 
 // Helper to generate multiple image URLs based on keywords with variations
@@ -65,7 +69,8 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       Return the coordinates for that place.
       Classify the item into EXACTLY ONE of these categories: [${categoriesString}]. If none fit perfectly, choose "Other".
       Generate a single specific visual keyword phrase to find one perfect picture for this activity.
-      Generate 1-3 short interest tags (e.g. "Hiking", "History", "Food").`,
+      Generate 1-3 short interest tags (e.g. "Hiking", "History", "Food").
+      Suggest the best time of year to visit this location.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: bucketItemSchema,
@@ -86,7 +91,8 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       longitude: data.longitude !== 0 ? data.longitude : undefined,
       images: data.imageKeyword ? generateImageUrls([data.imageKeyword]) : [],
       category: data.category,
-      interests: data.interests || []
+      interests: data.interests || [],
+      bestTimeToVisit: data.bestTimeToVisit
     };
   } catch (error) {
     console.error("Gemini analysis failed", error);
@@ -137,7 +143,8 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
         longitude: data.longitude !== 0 ? data.longitude : undefined,
         images: data.imageKeyword ? generateImageUrls([data.imageKeyword]) : [],
         category: data.category,
-        interests: data.interests || []
+        interests: data.interests || [],
+        bestTimeToVisit: data.bestTimeToVisit
       };
     } catch (error) {
       console.error("Gemini suggestion failed", error);
@@ -150,7 +157,8 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
         longitude: 31.1342,
         images: generateImageUrls(keywords),
         category: "Travel",
-        interests: ["History", "Wonder"]
+        interests: ["History", "Wonder"],
+        bestTimeToVisit: "October to April"
       };
     }
   };
