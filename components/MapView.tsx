@@ -107,10 +107,10 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
     });
     
     const userIcon = L.divIcon({
-      className: 'user-div-icon',
-      html: `<div style="background-color: #3b82f6; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);"></div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
+      className: '!bg-transparent border-none',
+      html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
     });
 
     if (userLocation) {
@@ -133,26 +133,34 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
             if (dist < proximityRange) isNearby = true;
         }
 
-        const color = item.completed ? '#22c55e' : '#ef4444';
-        const baseStyle = `background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);`;
+        const color = item.completed ? '#22c55e' : '#ef4444'; // Green or Red
         
+        // Pin SVG (Smaller, cleaner, no thick white stroke)
+        const pinSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" stroke="none" class="w-full h-full filter drop-shadow-sm">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+        `;
+
         let iconHtml;
         if (isNearby) {
+            // Pulse effect for nearby
             iconHtml = `
               <div class="relative flex items-center justify-center w-full h-full">
-                <span class="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping"></span>
-                <div style="${baseStyle} position: relative; z-index: 10;"></div>
+                <span class="absolute bottom-0 w-3 h-3 bg-red-500 rounded-full animate-ping opacity-75"></span>
+                <div class="relative z-10 w-full h-full hover:scale-110 transition-transform origin-bottom">${pinSvg}</div>
               </div>
             `;
         } else {
-            iconHtml = `<div style="${baseStyle}"></div>`;
+            iconHtml = `<div class="w-full h-full hover:scale-110 transition-transform origin-bottom">${pinSvg}</div>`;
         }
 
         const icon = L.divIcon({
-          className: 'custom-div-icon bg-transparent border-none',
+          className: '!bg-transparent border-none', // Override default leaflet white square
           html: iconHtml,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
+          iconSize: [24, 24], // Smaller size
+          iconAnchor: [12, 24], // Center bottom
+          popupAnchor: [0, -24]
         });
 
         const marker = L.marker([latitude, longitude], { icon }).addTo(map);

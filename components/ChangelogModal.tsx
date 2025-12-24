@@ -41,7 +41,10 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
           changes: [
               "Automatic Google Drive Backup (Every 24h)",
               "Restored Icon-based Filter Toolbar (Todo/Done)",
-              "Silent Backup Mode"
+              "Silent Backup Mode",
+              "Refined Logo: Adjusted text positioning & color",
+              "Map Upgrade: Cleaner, smaller pin markers",
+              "Map Status: Green pins for Done, Red for Pending"
           ]
       },
       {

@@ -35,6 +35,16 @@ export interface BucketItemDraft {
   bestTimeToVisit?: string;
 }
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: number;
+  read: boolean;
+  type: 'location' | 'system' | 'info';
+  relatedItemId?: string;
+}
+
 export enum AppView {
   LIST = 'LIST',
   ADD = 'ADD',

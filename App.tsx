@@ -10,8 +10,9 @@ import { MapView } from './components/MapView';
 import { CompleteDateModal } from './components/CompleteDateModal';
 import { ChangelogModal } from './components/ChangelogModal';
 import { ImageGalleryModal } from './components/ImageGalleryModal';
+import { NotificationsModal } from './components/NotificationsModal';
 import { OnboardingTour } from './components/OnboardingTour';
-import { BucketItem, BucketItemDraft, Coordinates, Theme, User } from './types';
+import { BucketItem, BucketItemDraft, Coordinates, Theme, User, AppNotification } from './types';
 import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance, speak, getDistanceSpeech } from './utils/geo';
 import { MOCK_BUCKET_ITEMS, generateMockItems } from './utils/mockData';
 import { triggerHaptic } from './utils/haptics';
@@ -25,6 +26,7 @@ const INT_KEY = 'jk_interests';
 const PROX_KEY = 'jk_proximity';
 const FAM_KEY = 'jk_family_members';
 const ONBOARDING_KEY = 'jk_onboarding_completed';
+const NOTIF_KEY = 'jk_notifications';
 
 // Default Data
 const DEFAULT_CATEGORIES = ['Adventure', 'Travel', 'Food', 'Culture', 'Nature', 'Luxury', 'Personal Growth'];
@@ -84,7 +86,7 @@ const LiquidBucket = ({
         
         {/* Text */}
         {!hideText && (
-            <text x="256" y="380" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize={text.length > 1 ? "160" : "280"} fill="white" textAnchor="middle" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+            <text x="256" y="420" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize={text.length > 1 ? "160" : "280"} fill="white" textAnchor="middle" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
                 {text}
             </text>
         )}
@@ -96,7 +98,12 @@ const BucketLogo = ({ onClickVersion, outlineColor }: { onClickVersion: () => vo
     <div className="flex flex-col items-start justify-center">
         <div className="flex items-center gap-2">
             <div className="text-red-500 dark:text-red-500">
-                <LiquidBucket text="JK" className="w-10 h-10" outlineColor={outlineColor} />
+                <LiquidBucket 
+                    text="JK" 
+                    className="w-10 h-10" 
+                    outlineColor={outlineColor} 
+                    frontColor="#ff4d4d" 
+                />
             </div>
             <button 
                 onClick={(e) => { e.stopPropagation(); onClickVersion(); }}
@@ -144,6 +151,13 @@ export default function App() {
     }
     return JSON.parse(saved);
   });
+
+  // Notifications State
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+      const saved = localStorage.getItem(NOTIF_KEY);
+      return saved ? JSON.parse(saved) : [];
+  });
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [isRadarOn, setIsRadarOn] = useState(false);
@@ -248,6 +262,10 @@ export default function App() {
     localStorage.setItem(FAM_KEY, JSON.stringify(familyMembers));
   }, [familyMembers]);
 
+  useEffect(() => {
+      localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
+  }, [notifications]);
+
   // Apply Theme and Meta Theme Color
   useEffect(() => {
     const root = window.document.documentElement;
@@ -289,6 +307,20 @@ export default function App() {
     }
   }, [theme]);
 
+  // Helper to Add Notification to State
+  const addAppNotification = useCallback((title: string, message: string, type: 'location' | 'system' | 'info' = 'system', relatedItemId?: string) => {
+      const newNotif: AppNotification = {
+          id: crypto.randomUUID(),
+          title,
+          message,
+          timestamp: Date.now(),
+          read: false,
+          type,
+          relatedItemId
+      };
+      setNotifications(prev => [newNotif, ...prev].slice(0, 50)); // Keep last 50
+  }, []);
+
   // Scheduled Reminders
   useEffect(() => {
     const checkScheduledReminders = () => {
@@ -307,14 +339,20 @@ export default function App() {
 
         if (hour === 11 && min === 0) {
             if (!localStorage.getItem(storageKeyAM)) {
-                sendNotification("Morning Inspiration ☀️", `Don't forget about your dream: ${randomItem.title}`);
+                const title = "Morning Inspiration ☀️";
+                const body = `Don't forget about your dream: ${randomItem.title}`;
+                sendNotification(title, body);
+                addAppNotification(title, body, 'system', randomItem.id);
                 localStorage.setItem(storageKeyAM, 'true');
             }
         }
 
         if (hour === 23 && min === 0) {
              if (!localStorage.getItem(storageKeyPM)) {
-                sendNotification("Dream Big Tonight 🌙", `Have you planned for: ${randomItem.title}?`);
+                const title = "Dream Big Tonight 🌙";
+                const body = `Have you planned for: ${randomItem.title}?`;
+                sendNotification(title, body);
+                addAppNotification(title, body, 'system', randomItem.id);
                 localStorage.setItem(storageKeyPM, 'true');
             }
         }
@@ -324,7 +362,7 @@ export default function App() {
     checkScheduledReminders();
 
     return () => clearInterval(interval);
-  }, [items]);
+  }, [items, addAppNotification]);
 
   // Auto-Backup Service (Every 24h)
   useEffect(() => {
@@ -387,21 +425,23 @@ export default function App() {
                   const dist = calculateDistance(newLocation, item.coordinates);
                   
                   if (dist < range) {
+                    const title = `Nearby: ${item.title}`;
+                    const body = `${item.description}\nDistance: ${formatDistance(dist)}`;
+                    
                     // 1. System Notification
-                    sendNotification(
-                      `Nearby: ${item.title}`, 
-                      `${item.description}\nDistance: ${formatDistance(dist)}`,
-                      `jk-item-${item.id}`
-                    );
+                    sendNotification(title, body, `jk-item-${item.id}`);
                     
                     // 2. Audio Notification (TTS)
                     const distSpeech = getDistanceSpeech(dist);
                     const audioText = `Knock Knock! You are nearby ${item.title}. It is ${distSpeech} away. ${item.description}`;
                     speak(audioText);
                     
-                    // 3. In-App Toast
+                    // 3. Add to History
+                    addAppNotification(title, body, 'location', item.id);
+
+                    // 4. In-App Toast
                     setActiveToast({
-                        title: `Nearby: ${item.title}`,
+                        title: title,
                         message: `${formatDistance(dist)} away - ${item.locationName || 'Check it out!'}`
                     });
                     setTimeout(() => setActiveToast(null), 6000);
@@ -433,7 +473,7 @@ export default function App() {
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [isRadarOn]); // Minimal dependencies to ensure watcher stability
+  }, [isRadarOn, addAppNotification]); // Minimal dependencies to ensure watcher stability
 
   const handleAddItem = (draft: BucketItemDraft) => {
     triggerHaptic('success');
@@ -575,6 +615,16 @@ export default function App() {
       }
   };
 
+  const handleMarkAllNotificationsRead = () => {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      triggerHaptic('light');
+  };
+
+  const handleClearNotifications = () => {
+      setNotifications([]);
+      triggerHaptic('medium');
+  };
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
@@ -602,6 +652,9 @@ export default function App() {
   
   // Progress Meter Calculation (0-100)
   const progressMeter = totalItems > 0 ? (completedGlobalCount / totalItems) * 100 : 0;
+
+  // Notification Badge Count
+  const unreadNotifications = notifications.filter(n => !n.read).length;
 
   // Determine fill color (Done items) based on theme
   const getFillColor = () => {
@@ -725,18 +778,6 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-2">
-               {/* Search Icon Button */}
-              <button
-                onClick={() => {
-                    setIsSearchOpen(true);
-                    triggerHaptic('medium');
-                }}
-                className={`p-2.5 rounded-full transition-colors ${searchQuery ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                title="Search"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-
               <button 
                 data-tour="radar-btn"
                 onClick={() => {
@@ -766,6 +807,23 @@ export default function App() {
                 title="Settings"
               >
                 <Settings className="w-5 h-5" />
+              </button>
+
+              {/* Notification Bell */}
+              <button
+                onClick={() => {
+                    setIsNotificationsOpen(true);
+                    triggerHaptic('light');
+                }}
+                className="relative p-2.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadNotifications > 0 && (
+                   <span className="absolute top-0 right-0 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900">
+                     {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                   </span>
+                )}
               </button>
               
               <button
@@ -847,21 +905,35 @@ export default function App() {
             {/* Controls Toolbar: View Mode + Filters */}
             <div className="flex flex-wrap gap-2 justify-between items-center px-1 mb-2">
                 
-                {/* View Switcher (List/Map) */}
-                <div data-tour="view-toggle" className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
-                    <button 
-                        onClick={() => { setActiveTab('list'); triggerHaptic('light'); }}
-                        className={`p-1.5 rounded-md transition-all ${activeTab === 'list' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                        title="List View"
+                <div className="flex items-center gap-2">
+                    {/* View Switcher (List/Map) */}
+                    <div data-tour="view-toggle" className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
+                        <button 
+                            onClick={() => { setActiveTab('list'); triggerHaptic('light'); }}
+                            className={`p-1.5 rounded-md transition-all ${activeTab === 'list' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                            title="List View"
+                        >
+                            <List className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => { setActiveTab('map'); triggerHaptic('light'); }}
+                            className={`p-1.5 rounded-md transition-all ${activeTab === 'map' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                            title="Map View"
+                        >
+                            <MapIcon className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    {/* NEW Search Button */}
+                    <button
+                        onClick={() => {
+                            setIsSearchOpen(true);
+                            triggerHaptic('medium');
+                        }}
+                        className={`p-2 rounded-lg border transition-colors shadow-sm ${searchQuery ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                        title="Search"
                     >
-                        <List className="w-4 h-4" />
-                    </button>
-                    <button 
-                        onClick={() => { setActiveTab('map'); triggerHaptic('light'); }}
-                        className={`p-1.5 rounded-md transition-all ${activeTab === 'map' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                        title="Map View"
-                    >
-                        <MapIcon className="w-4 h-4" />
+                        <Search className="w-4 h-4" />
                     </button>
                 </div>
 
@@ -1023,7 +1095,7 @@ export default function App() {
                 setIsAddModalOpen(true);
                 triggerHaptic('medium');
             }}
-            className="fixed bottom-6 right-6 z-40 group"
+            className="fixed bottom-4 right-4 z-40 group"
             aria-label="Add Wish"
         >
              <div className="relative flex items-center justify-center">
@@ -1032,16 +1104,16 @@ export default function App() {
                     <LiquidBucket 
                         text="fab" 
                         hideText={true} 
-                        className="w-16 h-16"
-                        frontColor="#FF0000" // New Red
-                        backColor="#39e75f"  // New Green
+                        className="w-20 h-20"
+                        frontColor="#ff4d4d" // Lighter Red
+                        backColor="#39e75f"  // Green
                         outlineColor="#FF0000"
                     />
                 </div>
                 
                 {/* Plus Badge */}
-                <div className="absolute top-0 right-0 translate-x-1 translate-y-1 bg-white dark:bg-gray-800 text-red-600 rounded-full w-7 h-7 flex items-center justify-center shadow-lg border-2 border-red-100 dark:border-gray-700">
-                    <Plus className="w-4 h-4 stroke-[4]" />
+                <div className="absolute top-0 right-0 translate-x-1 translate-y-1 bg-white dark:bg-gray-800 text-red-600 rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-red-100 dark:border-gray-700">
+                    <Plus className="w-5 h-5 stroke-[4]" />
                 </div>
             </div>
 
@@ -1103,6 +1175,14 @@ export default function App() {
       <ChangelogModal 
         isOpen={isChangelogOpen} 
         onClose={() => setIsChangelogOpen(false)} 
+      />
+
+      <NotificationsModal 
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        notifications={notifications}
+        onMarkAllRead={handleMarkAllNotificationsRead}
+        onClearAll={handleClearNotifications}
       />
 
       <ImageGalleryModal

@@ -21,7 +21,7 @@ const STEPS: Step[] = [
     target: '[data-tour="add-btn"]',
     title: "Dream It & Magic Fill",
     description: "Tap here to add a wish. Just type something like 'See the Northern Lights' and our AI will automatically find the best location, photos, and time to visit.",
-    position: 'left' // FAB is bottom right, so tooltip to the left
+    position: 'center' // Force center position for max visibility on mobile
   },
   {
     target: '[data-tour="radar-btn"]',
@@ -103,7 +103,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onComp
         position: 'fixed',
         borderRadius: '12px', // Match rounded corners roughly
         boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75)',
-        zIndex: 60,
+        zIndex: 100, // High z-index to stay on top
         pointerEvents: 'none', // Allow clicks to pass through if needed, but we block here essentially via the overlay visual
         transition: 'all 0.3s ease-out'
       }
@@ -112,7 +112,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onComp
        position: 'fixed',
        inset: 0,
        backgroundColor: 'rgba(0,0,0,0.75)',
-       zIndex: 60,
+       zIndex: 100,
        transition: 'all 0.3s ease-out'
     };
 
@@ -124,7 +124,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onComp
         left: '50%',
         transform: 'translate(-50%, -50%)',
         position: 'fixed',
-        zIndex: 70
+        zIndex: 110
       };
     }
 
@@ -156,16 +156,12 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onComp
         break;
     }
 
-    // Boundary checks to keep tooltip on screen (simple version)
-    // If we wanted to be robust we'd check window.innerWidth/Height here
-    // but the defined steps (bottom for header items, left for FAB) are generally safe.
-
     return {
       top,
       left,
       transform,
       position: 'fixed',
-      zIndex: 70
+      zIndex: 110 // Ensure tooltip is above spotlight
     };
   };
 
