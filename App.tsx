@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
@@ -33,6 +32,7 @@ const NOTIF_KEY = 'jk_notifications';
 const DEFAULT_CATEGORIES = ['Adventure', 'Travel', 'Food', 'Culture', 'Nature', 'Luxury', 'Personal Growth'];
 const DEFAULT_INTERESTS = ['Hiking', 'Photography', 'History', 'Art', 'Beach', 'Mountains', 'Wildlife', 'Music'];
 const DEFAULT_PROXIMITY = 2000; // 2km in meters
+const DEFAULT_CLIENT_ID = '482285261060-fe5mujd6kn3gos3k6kgoj0kjl63u0cr1.apps.googleusercontent.com';
 
 // --- LIQUID BUCKET COMPONENT ---
 const LiquidBucket = ({ 
@@ -175,6 +175,70 @@ export default function App() {
   
   // Onboarding Tour State
   const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  // Google Auth Client Ref for Re-authentication
+  const tokenClient = useRef<any>(null);
+
+  // Initialize Google Token Client on Mount (if user exists) to allow re-auth
+  useEffect(() => {
+    if (user && !tokenClient.current) {
+        const initClient = () => {
+            if (window.google?.accounts?.oauth2) {
+                try {
+                    const clientId = localStorage.getItem('jk_client_id') || DEFAULT_CLIENT_ID;
+                    tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+                        client_id: clientId,
+                        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+                        callback: (tokenResponse: any) => {
+                            if (tokenResponse.access_token) {
+                                driveService.setAccessToken(tokenResponse.access_token);
+                                console.log("Token refreshed successfully");
+                            }
+                        },
+                    });
+                } catch (e) {
+                    console.error("Failed to initialize token client", e);
+                }
+            }
+        };
+        
+        // Wait for script to load
+        if (window.google) {
+            initClient();
+        } else {
+            const interval = setInterval(() => {
+                if (window.google) {
+                    clearInterval(interval);
+                    initClient();
+                }
+            }, 500);
+            return () => clearInterval(interval);
+        }
+    }
+  }, [user]);
+
+  // Function to handle re-authentication
+  const handleGoogleReauth = useCallback((): Promise<void> => {
+      return new Promise((resolve, reject) => {
+          if (!tokenClient.current) {
+              alert("Google Sign-In not initialized. Please reload.");
+              return reject("Not initialized");
+          }
+          
+          // Override callback for this specific request to resolve the promise
+          tokenClient.current.callback = (resp: any) => {
+              if (resp.error) {
+                  reject(resp.error);
+              } else if (resp.access_token) {
+                  driveService.setAccessToken(resp.access_token);
+                  resolve();
+              }
+          };
+          
+          // Request token (triggers popup if needed, or silent if possible)
+          tokenClient.current.requestAccessToken({ prompt: '' });
+      });
+  }, []);
 
   // Check onboarding status on mount or login
   useEffect(() => {
@@ -865,10 +929,21 @@ export default function App() {
                         setUser(null);
                     }
                 }}
-                className="p-2.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                title="Sign Out"
+                className="p-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center justify-center overflow-hidden"
+                title={`Sign Out ${user?.name}`}
               >
-                <LogOut className="w-5 h-5" />
+                {user?.photoUrl ? (
+                    <img 
+                        src={user.photoUrl} 
+                        alt="Profile" 
+                        referrerPolicy="no-referrer"
+                        className="w-8 h-8 rounded-full object-cover"
+                    />
+                ) : (
+                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 font-bold text-[10px]">
+                        {user?.name ? getInitials(user.name) : <Users className="w-4 h-4" />}
+                    </div>
+                )}
               </button>
             </div>
           </div>
@@ -1224,6 +1299,7 @@ export default function App() {
             setIsSettingsOpen(false);
             setTimeout(() => setShowOnboarding(true), 300);
         }}
+        onReauth={handleGoogleReauth}
       />
 
       <CompleteDateModal 

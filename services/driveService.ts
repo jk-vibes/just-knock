@@ -15,10 +15,10 @@ export const driveService = {
 
   getAccessToken: () => accessToken,
 
-  backup: async (items: BucketItem[], silent: boolean = false): Promise<{ success: boolean; timestamp: string }> => {
+  backup: async (items: BucketItem[], silent: boolean = false): Promise<{ success: boolean; timestamp: string; error?: string }> => {
     if (!accessToken) {
       if (!silent) console.error("No access token available for backup");
-      return { success: false, timestamp: '' };
+      return { success: false, timestamp: '', error: 'No access token' };
     }
 
     try {
@@ -29,7 +29,7 @@ export const driveService = {
       );
       
       if (!searchResponse.ok) {
-        if (searchResponse.status === 401) throw new Error("Unauthorized: Please sign in again.");
+        if (searchResponse.status === 401) throw new Error("Unauthorized");
         throw new Error(`Search failed: ${searchResponse.statusText}`);
       }
       
@@ -74,6 +74,7 @@ export const driveService = {
       });
 
       if (!response.ok) {
+        if (response.status === 401) throw new Error("Unauthorized");
         const errData = await response.json();
         console.error("Drive upload error details:", errData);
         throw new Error(`Upload failed: ${response.statusText}`);
@@ -83,16 +84,14 @@ export const driveService = {
       localStorage.setItem(CLOUD_META_KEY, timestamp);
       return { success: true, timestamp };
     } catch (e) {
-      console.error("Backup failed:", e);
-      if (!silent) {
-        alert(e instanceof Error ? e.message : "Backup failed. Ensure Google Drive API is enabled in your Google Console.");
-      }
-      return { success: false, timestamp: '' };
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      if (!silent) console.error("Backup failed:", msg);
+      return { success: false, timestamp: '', error: msg };
     }
   },
 
-  restore: async (): Promise<{ success: boolean; items?: BucketItem[]; timestamp?: string }> => {
-    if (!accessToken) return { success: false };
+  restore: async (): Promise<{ success: boolean; items?: BucketItem[]; timestamp?: string; error?: string }> => {
+    if (!accessToken) return { success: false, error: 'No access token' };
 
     try {
       // 1. Find the file
@@ -101,14 +100,16 @@ export const driveService = {
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       
-      if (!searchResponse.ok) throw new Error("Search failed");
+      if (!searchResponse.ok) {
+         if (searchResponse.status === 401) throw new Error("Unauthorized");
+         throw new Error("Search failed");
+      }
 
       const searchData = await searchResponse.json();
       const file = searchData.files?.[0];
 
       if (!file) {
-        alert("No backup file found in your Google Drive.");
-        return { success: false };
+        return { success: false, error: "No backup file found" };
       }
 
       // 2. Download content
@@ -117,7 +118,10 @@ export const driveService = {
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
 
-      if (!contentResponse.ok) throw new Error("Download failed");
+      if (!contentResponse.ok) {
+          if (contentResponse.status === 401) throw new Error("Unauthorized");
+          throw new Error("Download failed");
+      }
 
       const items = await contentResponse.json();
       
@@ -127,8 +131,9 @@ export const driveService = {
         timestamp: file.modifiedTime 
       };
     } catch (e) {
-      console.error("Restore failed:", e);
-      return { success: false };
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      console.error("Restore failed:", msg);
+      return { success: false, error: msg };
     }
   },
 

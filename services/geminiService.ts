@@ -1,10 +1,11 @@
 
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { BucketItemDraft } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const bucketItemSchema: Schema = {
+// Defining the response schema using Type from @google/genai
+const bucketItemSchema = {
   type: Type.OBJECT,
   properties: {
     title: {
@@ -60,8 +61,9 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
   try {
     const categoriesString = availableCategories.join(", ");
     
+    // Using gemini-3-flash-preview for text analysis tasks
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: `User input: "${input}". 
       Analyze this bucket list dream. 
       
@@ -125,8 +127,9 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
         prompt += `\nSurprise the user with something amazing.`;
       }
       
+      // Using gemini-3-flash-preview for creative suggestion tasks
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
           responseMimeType: "application/json",

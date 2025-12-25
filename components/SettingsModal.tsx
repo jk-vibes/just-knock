@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, Users, Database, LogOut, FileDigit, Smartphone, AlertCircle, Volume2, FileJson, FileSpreadsheet, PlayCircle } from 'lucide-react';
+import { X, Moon, Sun, Monitor, Trash2, Plus, Cloud, Upload, Download, Loader2, CheckCircle2, Eraser, AlertCircle, Volume2, FileJson, FileSpreadsheet, PlayCircle, Database } from 'lucide-react';
 import { Theme } from '../types';
 import { driveService } from '../services/driveService';
 import { BucketItem } from '../types';
@@ -31,6 +31,7 @@ interface SettingsModalProps {
   proximityRange: number;
   onProximityRangeChange: (range: number) => void;
   onRestartTour?: () => void;
+  onReauth?: () => Promise<void>;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -55,7 +56,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRestore,
   proximityRange,
   onProximityRangeChange,
-  onRestartTour
+  onRestartTour,
+  onReauth
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'categories' | 'interests' | 'family' | 'data'>('general');
   const [newItemInput, setNewItemInput] = useState('');
@@ -64,6 +66,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [backupStatus, setBackupStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [restoreStatus, setRestoreStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>('');
 
   const isGuest = !driveService.getAccessToken();
 
@@ -72,6 +75,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setLastBackup(driveService.getLastBackupTime());
         setBackupStatus('idle');
         setRestoreStatus('idle');
+        setStatusMessage('');
     }
   }, [isOpen]);
 
@@ -91,15 +95,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       return;
     }
     setBackupStatus('loading');
-    const result = await driveService.backup(items);
+    setStatusMessage('');
+
+    let result = await driveService.backup(items);
+    
+    // Auto-retry if unauthorized and handler provided
+    if (!result.success && result.error === 'Unauthorized' && onReauth) {
+        try {
+            setStatusMessage('Session expired. Reconnecting...');
+            await onReauth();
+            setStatusMessage('Retrying backup...');
+            result = await driveService.backup(items);
+        } catch (e) {
+            console.error("Reauth failed", e);
+        }
+    }
+
     if (result.success) {
         setBackupStatus('success');
         setLastBackup(result.timestamp);
-        // Inform user
+        setStatusMessage('');
         setTimeout(() => setBackupStatus('idle'), 3000);
     } else {
         setBackupStatus('error');
-        setTimeout(() => setBackupStatus('idle'), 3000);
+        setStatusMessage(result.error === 'Unauthorized' ? 'Sign-in required' : 'Backup failed');
+        setTimeout(() => {
+            setBackupStatus('idle');
+            setStatusMessage('');
+        }, 3000);
     }
   };
 
@@ -109,15 +132,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       return;
     }
     if (!onRestore) return;
+    
     setRestoreStatus('loading');
-    const result = await driveService.restore();
+    setStatusMessage('');
+
+    let result = await driveService.restore();
+
+    // Auto-retry if unauthorized and handler provided
+    if (!result.success && result.error === 'Unauthorized' && onReauth) {
+        try {
+            setStatusMessage('Session expired. Reconnecting...');
+            await onReauth();
+            setStatusMessage('Retrying restore...');
+            result = await driveService.restore();
+        } catch (e) {
+            console.error("Reauth failed", e);
+        }
+    }
+
     if (result.success && result.items) {
         onRestore(result.items);
         setRestoreStatus('success');
+        setStatusMessage('');
         setTimeout(() => setRestoreStatus('idle'), 3000);
     } else {
         setRestoreStatus('error');
-        setTimeout(() => setRestoreStatus('idle'), 3000);
+        setStatusMessage(result.error || 'Restore failed');
+        setTimeout(() => {
+            setRestoreStatus('idle');
+            setStatusMessage('');
+        }, 3000);
     }
   };
   
@@ -434,6 +478,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 {lastBackup && (
                                     <p className="text-[10px] text-blue-500 mt-2 font-medium">Last synced: {new Date(lastBackup).toLocaleString()}</p>
                                 )}
+                                {statusMessage && (
+                                    <p className="text-[10px] text-orange-500 mt-1 font-bold animate-pulse">{statusMessage}</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -454,7 +501,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <Upload className="w-5 h-5 text-gray-500 group-hover:text-blue-500" />
                             )}
                             <span className={`text-xs ${backupStatus === 'success' ? 'text-green-600' : backupStatus === 'error' ? 'text-red-600' : 'text-gray-700 dark:text-gray-200'}`}>
-                                {backupStatus === 'success' ? 'Backed Up' : backupStatus === 'error' ? 'Failed' : 'Backup'}
+                                {backupStatus === 'success' ? 'Backed Up' : backupStatus === 'error' ? 'Retry' : 'Backup'}
                             </span>
                         </button>
 
@@ -473,7 +520,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <Download className="w-5 h-5 text-gray-500 group-hover:text-green-500" />
                             )}
                             <span className={`text-xs ${restoreStatus === 'success' ? 'text-green-600' : restoreStatus === 'error' ? 'text-red-600' : 'text-gray-700 dark:text-gray-200'}`}>
-                                {restoreStatus === 'success' ? 'Restored' : restoreStatus === 'error' ? 'Failed' : 'Restore'}
+                                {restoreStatus === 'success' ? 'Restored' : restoreStatus === 'error' ? 'Retry' : 'Restore'}
                             </span>
                         </button>
                     </div>
