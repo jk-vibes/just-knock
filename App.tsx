@@ -1157,7 +1157,7 @@ export default function App() {
                 triggerHaptic('medium');
             }}
             className="fixed bottom-4 right-4 z-40 group"
-            aria-label="Add Wish"
+            aria-label="Add Dream"
         >
              <div className="relative flex items-center justify-center">
                 {/* Bucket Icon - Increased Size */}
@@ -1179,7 +1179,7 @@ export default function App() {
             </div>
 
             <span className="absolute -top-8 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                Add Wish
+                Add Dream
             </span>
         </button>
       )}

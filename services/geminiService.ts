@@ -13,23 +13,23 @@ const bucketItemSchema: Schema = {
     },
     description: {
       type: Type.STRING,
-      description: "A short inspiring description of the activity."
+      description: "A short inspiring description of the activity or goal."
     },
     locationName: {
       type: Type.STRING,
-      description: "The specific name of the location (city, landmark, or country) if applicable."
+      description: "The specific name of the location if applicable. If it is a general goal (e.g. 'Buy a car', 'Learn Piano'), return an empty string."
     },
     latitude: {
       type: Type.NUMBER,
-      description: "The latitude of the specific location, or 0 if no specific location is found."
+      description: "The latitude of the specific location, or 0 if no specific location is found or needed."
     },
     longitude: {
       type: Type.NUMBER,
-      description: "The longitude of the specific location, or 0 if no specific location is found."
+      description: "The longitude of the specific location, or 0 if no specific location is found or needed."
     },
     imageKeyword: {
       type: Type.STRING,
-      description: "A single, highly specific visual 2-3 word phrase describing the main scene for finding a stock photo."
+      description: "A single, highly specific visual 2-3 word phrase describing the object or scene for finding a stock photo."
     },
     category: {
       type: Type.STRING,
@@ -42,10 +42,10 @@ const bucketItemSchema: Schema = {
     },
     bestTimeToVisit: {
         type: Type.STRING,
-        description: "The best months or season to visit (e.g., 'May to September' or 'Spring')."
+        description: "The best months or season to do this. If not seasonal (e.g. buying something), return 'Anytime'."
     }
   },
-  required: ["title", "description", "locationName", "latitude", "longitude", "imageKeyword", "category", "interests", "bestTimeToVisit"]
+  required: ["title", "description", "imageKeyword", "category", "interests"]
 };
 
 // Helper to generate multiple image URLs based on keywords with variations
@@ -63,18 +63,20 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `User input: "${input}". 
-      Analyze this bucket list wish. 
-      If the user specifies a place, use that. 
-      If the user specifies an activity without a place (e.g. "Go skydiving"), suggest the single most famous or best place in the world to do it.
-      Return the coordinates for that place.
-      Classify the item into EXACTLY ONE of these categories: [${categoriesString}]. If none fit perfectly, choose "Other".
-      Generate a single specific visual keyword phrase to find one perfect picture for this activity.
-      Generate 1-3 short interest tags (e.g. "Hiking", "History", "Food").
-      Suggest the best time of year to visit this location.`,
+      Analyze this bucket list dream. 
+      
+      1. If the user specifies a place, use that location.
+      2. If it is an activity implies a location (e.g. "Go skydiving"), suggest the single best place in the world for it.
+      3. If it is a NON-LOCATION goal (e.g. "Buy a Mercedes", "Learn Spanish", "Run a Marathon", "Read 100 books"), leave locationName empty and coordinates as 0.
+      
+      Classify the item into EXACTLY ONE of these categories: [${categoriesString}]. If none fit perfectly, choose "Other" or "Personal Growth" or "Luxury".
+      Generate a single specific visual keyword phrase to find one perfect picture for this activity or object.
+      Generate 1-3 short interest tags (e.g. "Cars", "Music", "Learning").
+      Suggest the best time (e.g. "Summer" or "Anytime").`,
       config: {
         responseMimeType: "application/json",
         responseSchema: bucketItemSchema,
-        systemInstruction: "You are a helpful travel assistant. You extract structured bucket list data from simple text."
+        systemInstruction: "You are a helpful assistant. You extract structured bucket list data from simple text. You can handle both travel destinations and personal goals."
       }
     });
 
@@ -83,16 +85,19 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
 
     const data = JSON.parse(text);
     
+    // Clean up empty location strings
+    const hasLocation = data.locationName && data.locationName.trim() !== '' && data.latitude !== 0;
+
     return {
       title: data.title,
       description: data.description,
-      locationName: data.locationName,
-      latitude: data.latitude !== 0 ? data.latitude : undefined,
-      longitude: data.longitude !== 0 ? data.longitude : undefined,
+      locationName: hasLocation ? data.locationName : undefined,
+      latitude: hasLocation ? data.latitude : undefined,
+      longitude: hasLocation ? data.longitude : undefined,
       images: data.imageKeyword ? generateImageUrls([data.imageKeyword]) : [],
       category: data.category,
       interests: data.interests || [],
-      bestTimeToVisit: data.bestTimeToVisit
+      bestTimeToVisit: data.bestTimeToVisit || 'Anytime'
     };
   } catch (error) {
     console.error("Gemini analysis failed", error);
@@ -110,8 +115,8 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
     try {
       const categoriesString = availableCategories.join(", ");
       
-      let prompt = `Generate ONE unique, exciting, and specific bucket list item that a travel enthusiast should experience. 
-        It should be a specific place or activity in a specific location.
+      let prompt = `Generate ONE unique, exciting bucket list dream. 
+        It can be a specific place to visit OR a specific life goal/object to acquire.
         Classify it into one of: [${categoriesString}].`;
 
       if (context && context.trim().length > 0) {
@@ -126,7 +131,7 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
         config: {
           responseMimeType: "application/json",
           responseSchema: bucketItemSchema,
-          systemInstruction: "You are a travel muse. Inspire the user with a single, amazing bucket list idea."
+          systemInstruction: "You are a muse. Inspire the user with a single, amazing bucket list idea."
         }
       });
   
@@ -134,17 +139,18 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
       if (!text) throw new Error("No response from AI");
   
       const data = JSON.parse(text);
-      
+      const hasLocation = data.locationName && data.locationName.trim() !== '' && data.latitude !== 0;
+
       return {
         title: data.title,
         description: data.description,
-        locationName: data.locationName,
-        latitude: data.latitude !== 0 ? data.latitude : undefined,
-        longitude: data.longitude !== 0 ? data.longitude : undefined,
+        locationName: hasLocation ? data.locationName : undefined,
+        latitude: hasLocation ? data.latitude : undefined,
+        longitude: hasLocation ? data.longitude : undefined,
         images: data.imageKeyword ? generateImageUrls([data.imageKeyword]) : [],
         category: data.category,
         interests: data.interests || [],
-        bestTimeToVisit: data.bestTimeToVisit
+        bestTimeToVisit: data.bestTimeToVisit || 'Anytime'
       };
     } catch (error) {
       console.error("Gemini suggestion failed", error);

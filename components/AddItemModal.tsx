@@ -120,7 +120,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       });
 
       if (isDuplicate) {
-          alert("You already have this wish on your list! Try adding something new.");
+          alert("You already have this dream on your list! Try adding something new.");
           return;
       }
 
@@ -178,17 +178,19 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
         <div className="p-5 overflow-y-auto no-scrollbar">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            {mode === 'edit' ? 'Edit Dream' : 'New Wish'}
+            {mode === 'edit' ? 'Edit Dream' : 'New Dream'}
           </h2>
           
           {mode === 'add' && !draft && (
             <>
-                <p className="text-gray-500 dark:text-gray-400 mb-5 text-sm">Type your wish (e.g., "See the Northern Lights") and let AI fill in the details.</p>
+                <p className="text-gray-500 dark:text-gray-400 mb-5 text-sm">
+                    Type your dream (e.g., "See the Northern Lights" or "Buy a Mercedes") and let AI fill in the details.
+                </p>
                 <div className="space-y-3">
                 <textarea
                     className="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                     rows={3}
-                    placeholder="What's on your bucket list?"
+                    placeholder="What's your dream? (e.g. Travel to Paris, Learn Guitar, Buy a House...)"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     autoFocus
@@ -202,7 +204,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                         {isAnalyzing ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            Finding...
+                            Analyzing...
                         </>
                         ) : (
                         <>
@@ -301,7 +303,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                                 value={draft.locationName || ''}
                                 onChange={(e) => handleDraftChange('locationName', e.target.value)}
                                 className="text-xs font-medium text-red-600 dark:text-red-400 bg-transparent border-b border-red-200 dark:border-red-800 focus:outline-none focus:border-red-500 w-full"
-                                placeholder="Location Name"
+                                placeholder="Location Name (Optional for non-travel items)"
                             />
                          </div>
                          <div className="flex items-center gap-2">
@@ -310,7 +312,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                                 value={draft.bestTimeToVisit || ''}
                                 onChange={(e) => handleDraftChange('bestTimeToVisit', e.target.value)}
                                 className="text-xs font-medium text-red-600 dark:text-red-400 bg-transparent border-b border-red-200 dark:border-red-800 focus:outline-none focus:border-red-500 w-full"
-                                placeholder="Best time to visit (e.g. Summer)"
+                                placeholder="Best time to do this"
                             />
                          </div>
                     </>
@@ -387,7 +389,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 {familyMembers.length > 0 && (
                     <div>
                         <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block flex items-center gap-2">
-                            <Users className="w-3 h-3" /> Whose wish is this?
+                            <Users className="w-3 h-3" /> Whose dream is this?
                         </label>
                         <select 
                             value={selectedOwner}
@@ -462,7 +464,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   className="flex-1 py-3 bg-red-600 text-white rounded-xl font-medium shadow-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <Check className="w-5 h-5" />
-                  {mode === 'edit' ? 'Save Changes' : 'Add to List'}
+                  {mode === 'edit' ? 'Save Changes' : 'Add Dream'}
                 </button>
               </div>
             </div>
