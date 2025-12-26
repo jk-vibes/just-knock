@@ -3,11 +3,15 @@
   "name": "Just Knock",
   "short_name": "Just Knock",
   "description": "A location-aware bucket list app that reminds you to fulfill your dreams when you're nearby.",
+  "id": "just-knock-app",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#ffffff",
   "theme_color": "#ef4444",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
+  "categories": ["lifestyle", "travel", "productivity"],
   "icons": [
     {
       "src": "/icon.svg",
@@ -32,6 +36,36 @@
       "type": "image/svg+xml",
       "sizes": "512x512",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Dream",
+      "url": "/?action=add",
+      "description": "Add a new item to your bucket list",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "View Map",
+      "url": "/?view=map",
+      "description": "See your dreams on the map",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "form_factor": "wide",
+      "label": "Home Screen"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "Mobile View"
     }
   ]
 }

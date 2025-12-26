@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
@@ -865,8 +866,8 @@ export default function App() {
           </div>
       )}
 
-      {/* Header */}
-      <header className="flex-none z-30 border-b border-red-100/50 dark:border-gray-800 shadow-sm backdrop-blur-md bg-white/90 dark:bg-gray-900/90 transition-colors duration-300">
+      {/* Header - Added padding-top for Safe Area Insets (Notch) */}
+      <header className="flex-none z-30 border-b border-red-100/50 dark:border-gray-800 shadow-sm backdrop-blur-md bg-white/90 dark:bg-gray-900/90 transition-colors duration-300 pt-[env(safe-area-inset-top)]">
         <div className="max-w-2xl mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -950,8 +951,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content - Scrollable */}
-      <main className="flex-grow overflow-y-auto no-scrollbar w-full">
+      {/* Main Content - Scrollable with Safe Area Inset Bottom padding */}
+      <main className="flex-grow overflow-y-auto no-scrollbar w-full pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-2xl mx-auto px-4 py-2 space-y-2">
             
             {/* Active Filters Bar */}
@@ -1223,7 +1224,7 @@ export default function App() {
           </div>
       )}
 
-      {/* Floating Action Button (FAB) */}
+      {/* Floating Action Button (FAB) - Added margin-bottom for Safe Area Insets (Home Bar) */}
       {!isSearchOpen && (
         <button
             data-tour="add-btn"
@@ -1231,7 +1232,7 @@ export default function App() {
                 setIsAddModalOpen(true);
                 triggerHaptic('medium');
             }}
-            className="fixed bottom-4 right-4 z-40 group"
+            className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 group"
             aria-label="Add Dream"
         >
              <div className="relative flex items-center justify-center">
