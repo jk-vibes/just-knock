@@ -177,9 +177,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
-        <div className="p-5 overflow-y-auto no-scrollbar">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[85vh] flex flex-col relative">
+        {/* Scrollable Content Area */}
+        <div className="p-4 sm:p-5 overflow-y-auto no-scrollbar flex-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-2 sticky top-0 bg-white dark:bg-gray-800 z-10 py-1">
             {mode === 'edit' ? 'Edit Dream' : 'New Dream'}
           </h2>
           
@@ -236,7 +237,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           )}
 
           {draft && (
-            <div className="space-y-3">
+            <div className="space-y-3 pb-2">
               {/* Draft Editor / AI Result Card */}
               <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-900/30 space-y-2">
                 
@@ -453,29 +454,34 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   </div>
                 </div>
               </div>
-
-              <div className="flex gap-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirm}
-                  className="flex-1 py-3 bg-red-600 text-white rounded-xl font-medium shadow-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Check className="w-5 h-5" />
-                  {mode === 'edit' ? 'Save Changes' : 'Add Dream'}
-                </button>
-              </div>
             </div>
           )}
         </div>
+
+        {/* Fixed Footer Buttons */}
+        {draft && (
+            <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0 z-20">
+                <div className="flex gap-3">
+                    <button
+                    onClick={onClose}
+                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                    Cancel
+                    </button>
+                    <button
+                    onClick={handleConfirm}
+                    className="flex-1 py-3 bg-red-600 text-white rounded-xl font-medium shadow-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                    <Check className="w-5 h-5" />
+                    {mode === 'edit' ? 'Save Changes' : 'Add Dream'}
+                    </button>
+                </div>
+            </div>
+        )}
         
         <button 
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="absolute top-3 right-3 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors z-30"
         >
             <X className="w-5 h-5" />
         </button>

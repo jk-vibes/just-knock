@@ -43,58 +43,75 @@ const LiquidBucket = ({
     hideText = false,
     frontColor,
     backColor,
-    outlineColor
+    outlineColor,
+    fillPercent = 50
 }: { 
     text: string, 
     className?: string, 
     hideText?: boolean,
     frontColor?: string,
     backColor?: string,
-    outlineColor?: string
-}) => (
-    <svg viewBox="0 0 512 512" className={`${className} filter drop-shadow-sm transition-transform hover:scale-110 duration-300`}>
-        <defs>
-            <clipPath id={`bucket-clip-${text}`}>
-                 <path d="M56 160l40 320h320l40-320Z" />
-            </clipPath>
-        </defs>
-        
-        {/* Handle */}
-        <path d="M56 160c0-100 400-100 400 0" stroke={outlineColor || "currentColor"} strokeWidth="30" strokeLinecap="round" fill="none" />
-        
-        {/* Liquid Group - Approx 70% Fill (Y start ~230) */}
-        <g clipPath={`url(#bucket-clip-${text})`}>
-             {/* Back Wave */}
-             <path fill={backColor || "currentColor"} opacity="0.5" d="M0 230 Q 128 190 256 230 T 512 230 V 512 H 0 Z">
-                  <animate attributeName="d" dur="3s" repeatCount="indefinite"
-                     values="
-                     M0 230 Q 128 190 256 230 T 512 230 V 512 H 0 Z;
-                     M0 230 Q 128 270 256 230 T 512 230 V 512 H 0 Z;
-                     M0 230 Q 128 190 256 230 T 512 230 V 512 H 0 Z" 
-                 />
-             </path>
-             {/* Front Wave */}
-             <path fill={frontColor || "currentColor"} opacity="0.8" d="M0 250 Q 128 290 256 250 T 512 250 V 512 H 0 Z">
-                  <animate attributeName="d" dur="2s" repeatCount="indefinite"
-                     values="
-                     M0 250 Q 128 290 256 250 T 512 250 V 512 H 0 Z;
-                     M0 250 Q 128 210 256 250 T 512 250 V 512 H 0 Z;
-                     M0 250 Q 128 290 256 250 T 512 250 V 512 H 0 Z" 
-                 />
-             </path>
-        </g>
+    outlineColor?: string,
+    fillPercent?: number
+}) => {
+    // Clamp percentage
+    const safePercent = Math.max(0, Math.min(100, fillPercent));
+    
+    // Calculate water level Y coordinate
+    // Top of bucket ~160, Bottom ~480. Height ~320.
+    // 100% -> 160
+    // 0% -> 480
+    const yBase = 480 - (safePercent * 3.2);
+    const amp = 15; // Wave amplitude
 
-        {/* Body Outline (drawn over liquid to keep crisp edges) */}
-        <path d="M56 160l40 320h320l40-320Z" stroke={outlineColor || "currentColor"} strokeWidth="30" strokeLinejoin="round" fill="none" />
-        
-        {/* Text */}
-        {!hideText && (
-            <text x="256" y="420" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize={text.length > 1 ? "160" : "280"} fill="white" textAnchor="middle" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                {text}
-            </text>
-        )}
-    </svg>
-);
+    // Generate animation paths dynamically based on yBase
+    const backWaveValues = `
+        M0 ${yBase} Q 128 ${yBase - amp} 256 ${yBase} T 512 ${yBase} V 512 H 0 Z;
+        M0 ${yBase} Q 128 ${yBase + amp} 256 ${yBase} T 512 ${yBase} V 512 H 0 Z;
+        M0 ${yBase} Q 128 ${yBase - amp} 256 ${yBase} T 512 ${yBase} V 512 H 0 Z
+    `.trim();
+
+    const frontWaveValues = `
+        M0 ${yBase} Q 128 ${yBase + amp} 256 ${yBase} T 512 ${yBase} V 512 H 0 Z;
+        M0 ${yBase} Q 128 ${yBase - amp} 256 ${yBase} T 512 ${yBase} V 512 H 0 Z;
+        M0 ${yBase} Q 128 ${yBase + amp} 256 ${yBase} T 512 ${yBase} V 512 H 0 Z
+    `.trim();
+
+    return (
+        <svg viewBox="0 0 512 512" className={`${className} filter drop-shadow-sm transition-transform hover:scale-110 duration-300`}>
+            <defs>
+                <clipPath id={`bucket-clip-${text}`}>
+                     <path d="M56 160l40 320h320l40-320Z" />
+                </clipPath>
+            </defs>
+            
+            {/* Handle */}
+            <path d="M56 160c0-100 400-100 400 0" stroke={outlineColor || "currentColor"} strokeWidth="30" strokeLinecap="round" fill="none" />
+            
+            {/* Liquid Group */}
+            <g clipPath={`url(#bucket-clip-${text})`}>
+                 {/* Back Wave */}
+                 <path fill={backColor || "currentColor"} opacity="0.6">
+                      <animate attributeName="d" dur="3s" repeatCount="indefinite" values={backWaveValues} />
+                 </path>
+                 {/* Front Wave */}
+                 <path fill={frontColor || "currentColor"} opacity="0.9">
+                      <animate attributeName="d" dur="2s" repeatCount="indefinite" values={frontWaveValues} />
+                 </path>
+            </g>
+    
+            {/* Body Outline (drawn over liquid to keep crisp edges) */}
+            <path d="M56 160l40 320h320l40-320Z" stroke={outlineColor || "currentColor"} strokeWidth="30" strokeLinejoin="round" fill="none" />
+            
+            {/* Text */}
+            {!hideText && (
+                <text x="256" y="420" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize={text.length > 1 ? "160" : "280"} fill="white" textAnchor="middle" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                    {text}
+                </text>
+            )}
+        </svg>
+    );
+};
 
 // Custom Bucket Logo Component - JK Design with Text
 const BucketLogo = ({ onClickVersion, outlineColor }: { onClickVersion: () => void, outlineColor: string }) => (
@@ -106,6 +123,7 @@ const BucketLogo = ({ onClickVersion, outlineColor }: { onClickVersion: () => vo
                     className="w-10 h-10" 
                     outlineColor={outlineColor} 
                     frontColor="#ff4d4d" 
+                    fillPercent={60}
                 />
             </div>
             <button 
@@ -266,16 +284,6 @@ export default function App() {
     media.addEventListener('change', listener);
     return () => media.removeEventListener('change', listener);
   }, []);
-
-  // Calculate Dynamic Outline Color based on Theme
-  const getThemeOutlineColor = () => {
-    // Specific Character Themes
-    if (theme === 'batman') return '#FFD700'; // Yellow
-    if (theme === 'elsa') return '#22d3ee'; // Light Blue
-    
-    // For Marvel, Light, Dark, System defaults -> Standard Red Brand Color
-    return '#ef4444'; 
-  };
 
   // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -785,6 +793,50 @@ export default function App() {
       return '#fca5a5'; // requested Light Red for default
   };
 
+  // Determine FAB Colors based on Theme
+  const getFABTheme = (currentTheme: Theme) => {
+    switch (currentTheme) {
+        case 'marvel':
+            return { 
+                outline: '#1e3a8a', // Dark Blue
+                front: '#dc2626',   // Red Water
+                back: '#ef4444', 
+                badgeBorder: '#1e3a8a',
+                badgeText: '#1e3a8a',
+                badgeBg: '#ffffff'
+            }; 
+        case 'batman':
+            return { 
+                outline: '#f59e0b', // Yellow
+                front: '#1f2937',   // Dark Gray Water
+                back: '#374151', 
+                badgeBorder: '#f59e0b',
+                badgeText: '#000000',
+                badgeBg: '#f59e0b'
+            }; 
+        case 'elsa':
+            return { 
+                outline: '#06b6d4', // Cyan
+                front: '#67e8f9',   // Light Cyan Water
+                back: '#a5f3fc',
+                badgeBorder: '#06b6d4',
+                badgeText: '#06b6d4',
+                badgeBg: '#ffffff'
+            }; 
+        default:
+            return { 
+                outline: '#ef4444', 
+                front: '#ff4d4d', 
+                back: '#fca5a5',
+                badgeBorder: '#fee2e2',
+                badgeText: '#ef4444',
+                badgeBg: '#ffffff'
+            }; 
+    }
+  };
+
+  const fabTheme = getFABTheme(theme);
+
   const filteredItems = items.filter(item => {
     // 1. Search Filter (Global)
     if (searchQuery) {
@@ -897,7 +949,7 @@ export default function App() {
         <div className="max-w-2xl mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <BucketLogo onClickVersion={() => setIsChangelogOpen(true)} outlineColor={getThemeOutlineColor()} />
+              <BucketLogo onClickVersion={() => setIsChangelogOpen(true)} outlineColor="#ef4444" />
             </div>
             
             <div className="flex items-center gap-2">
@@ -1273,19 +1325,27 @@ export default function App() {
         >
              <div className="relative flex items-center justify-center">
                 {/* Bucket Icon - Increased Size */}
-                <div className={`transition-transform duration-300 group-hover:-rotate-12 group-active:scale-95 filter drop-shadow-xl ${theme === 'elsa' ? 'text-cyan-500' : 'text-[#ff0000] dark:text-[#ff0000]'}`}>
+                <div className={`transition-transform duration-300 group-hover:-rotate-12 group-active:scale-95 filter drop-shadow-xl`}>
                     <LiquidBucket 
                         text="fab" 
                         hideText={true} 
                         className="w-20 h-20"
-                        frontColor={theme === 'elsa' ? "#67e8f9" : "#ff4d4d"} // Cyan-300 for Elsa, Red for others
-                        backColor={theme === 'elsa' ? "#22d3ee" : "#39e75f"}  // Cyan-400 for Elsa, Green for others
-                        outlineColor={theme === 'elsa' ? "#06b6d4" : "#FF0000"} // Cyan-500 for Elsa, Red for others
+                        frontColor={fabTheme.front}
+                        backColor={fabTheme.back}
+                        outlineColor={fabTheme.outline}
+                        fillPercent={fillPercentage}
                     />
                 </div>
                 
                 {/* Plus Badge */}
-                <div className="absolute top-0 right-0 translate-x-1 translate-y-1 bg-white dark:bg-gray-800 text-red-600 rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-red-100 dark:border-gray-700">
+                <div 
+                    className="absolute top-0 right-0 translate-x-1 translate-y-1 rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2"
+                    style={{ 
+                        backgroundColor: fabTheme.badgeBg, 
+                        borderColor: fabTheme.badgeBorder,
+                        color: fabTheme.badgeText 
+                    }}
+                >
                     <Plus className="w-5 h-5 stroke-[4]" />
                 </div>
             </div>
