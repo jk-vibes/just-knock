@@ -401,19 +401,30 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    if (!mapInstanceRef.current) {
-        const map = L.map(mapContainerRef.current, {
-            zoomControl: false
-        });
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
-        mapInstanceRef.current = map;
+    // Cleanup existing instance if any (Safety for StrictMode)
+    if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
     }
 
-    const map = mapInstanceRef.current;
+    const initialCenter: [number, number] = item?.coordinates 
+        ? [item.coordinates.latitude, item.coordinates.longitude]
+        : [0, 0];
+
+    const map = L.map(mapContainerRef.current, {
+        zoomControl: false,
+        center: initialCenter,
+        zoom: item?.coordinates ? 12 : 2
+    });
     
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    mapInstanceRef.current = map;
+
     // Robust resize handling using ResizeObserver
     const resizeObserver = new ResizeObserver(() => {
         map.invalidateSize();
@@ -427,7 +438,19 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
     };
   }, []);
 
-  // 2. Update Map Content (Run when data changes)
+  // 2. Handle Tab/Mode Switching (Invalidate Size)
+  useEffect(() => {
+      // Force map to recalculate size when layout likely changes (e.g. sidebar sliding out)
+      if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+          // Also try after transition delay
+          setTimeout(() => {
+              mapInstanceRef.current?.invalidateSize();
+          }, 350);
+      }
+  }, [activeTab, plannerMode]);
+
+  // 3. Update Map Content (Run when data changes)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !item?.coordinates) return;
@@ -795,3 +818,124 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                     </div>
 
                     <div className="flex gap-2">
+                        <button
+                            onClick={handleSaveRoute}
+                            disabled={isSaved || (plannerMode === 'destination' ? currentItinerary.length === 0 : roadTripStops.length === 0)}
+                            className={`flex-1 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                                isSaved 
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                                : 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:opacity-90'
+                            } ${(plannerMode === 'destination' ? currentItinerary.length === 0 : roadTripStops.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            {isSaved ? (
+                                <>
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    Route Saved!
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="w-4 h-4" />
+                                    Save {plannerMode === 'destination' ? 'City' : 'Road'} Route
+                                </>
+                            )}
+                        </button>
+
+                        <button
+                            onClick={handleStartNavigation}
+                            disabled={plannerMode === 'destination' ? routeWithDetails.length === 0 : !startCoordinates}
+                            className="px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Open in Google Maps"
+                        >
+                            <Navigation className="w-4 h-4" />
+                            GO
+                        </button>
+                    </div>
+                    
+                    {plannerMode === 'roadtrip' && (
+                         <div className="text-center">
+                            <p className="text-[9px] text-gray-400">Road trip route is linear: Start -> Stops -> End.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Map View */}
+            <div className="flex-1 bg-gray-100 dark:bg-gray-900 h-full relative w-full md:w-2/3">
+                <div ref={mapContainerRef} className="w-full h-full min-h-[300px] z-[0]" />
+            </div>
+
+            {/* STOP DETAILS MODAL */}
+            {selectedStop && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80%]">
+                        {/* Image Header */}
+                        <div className="relative h-48 bg-gray-200 dark:bg-gray-700 shrink-0">
+                            {selectedStop.images && selectedStop.images.length > 0 ? (
+                                <img 
+                                    src={selectedStop.images[0]} 
+                                    alt={selectedStop.name} 
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full relative bg-gray-200 dark:bg-gray-700">
+                                    {/* Placeholder */}
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                                        <MapPin className="w-12 h-12 mb-2 opacity-20" />
+                                        <span className="text-xs">Loading preview...</span>
+                                    </div>
+                                    
+                                    {/* Fallback Image Generator */}
+                                    <img 
+                                        key={selectedStop.name}
+                                        src={`https://image.pollinations.ai/prompt/${encodeURIComponent(selectedStop.name + ' travel landmark')}?width=600&height=400&nologo=true&seed=${Math.floor(Math.random() * 1000)}`}
+                                        alt={selectedStop.name}
+                                        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 opacity-0"
+                                        onLoad={(e) => {
+                                            e.currentTarget.classList.remove('opacity-0');
+                                        }}
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            <button 
+                                onClick={() => setSelectedStop(null)}
+                                className="absolute top-3 right-3 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                            {selectedStop.isImportant && (
+                                <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                                    <Star className="w-3 h-3 fill-current" /> Must See
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-5 overflow-y-auto">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-tight mb-2">
+                                {selectedStop.name}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+                                {selectedStop.description || "No description available."}
+                            </p>
+
+                            <a 
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedStop.name + ' ' + (item?.locationName || ''))}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center justify-center gap-2 w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20"
+                            >
+                                <Navigation className="w-4 h-4" />
+                                Navigate Here
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+        </div>
+    </div>
+  );
+};
