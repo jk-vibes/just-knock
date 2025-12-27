@@ -397,23 +397,42 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
       return `${hrs} hr ${mins > 0 ? `${mins} min` : ''}`;
   };
 
-  // Leaflet Map Effect
+  // 1. Initialize Map & Resize Observer (Run Once)
   useEffect(() => {
-    if (!mapContainerRef.current || !item?.coordinates) return;
+    if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-        mapInstanceRef.current = L.map(mapContainerRef.current, {
+        const map = L.map(mapContainerRef.current, {
             zoomControl: false
         });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap'
-        }).addTo(mapInstanceRef.current);
-        L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
+        }).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        mapInstanceRef.current = map;
     }
 
     const map = mapInstanceRef.current;
     
-    // Clean up
+    // Robust resize handling using ResizeObserver
+    const resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize();
+    });
+    resizeObserver.observe(mapContainerRef.current);
+
+    return () => {
+        resizeObserver.disconnect();
+        map.remove();
+        mapInstanceRef.current = null;
+    };
+  }, []);
+
+  // 2. Update Map Content (Run when data changes)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !item?.coordinates) return;
+    
+    // Clean up existing layers
     map.eachLayer(layer => {
         if (layer instanceof L.Marker || layer instanceof L.Polyline) map.removeLayer(layer);
     });
@@ -447,7 +466,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
             const numIcon = L.divIcon({
                 className: 'bg-transparent',
                 html: `
-                    <div style="background-color: ${stop.completed ? '#22c55e' : '#3b82f6'}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-family: sans-serif;">
+                    <div style="background-color: ${stop.completed ? '#22c55e' : '#16a34a'}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-family: sans-serif;">
                         ${stop.isImportant ? '<span style="color: #fbbf24; font-size: 10px; position: absolute; top: -8px;">★</span>' : ''}
                         ${idx + 1}
                     </div>
@@ -513,7 +532,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
     // Draw Polyline
     if (latLngs.length > 1) {
         L.polyline(latLngs, {
-            color: plannerMode === 'destination' ? '#3b82f6' : '#f97316',
+            color: plannerMode === 'destination' ? '#16a34a' : '#f97316',
             weight: 4,
             opacity: 0.8,
             dashArray: '5, 10',
@@ -524,23 +543,27 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
     // Fit Bounds
     if (bounds.isValid()) {
         map.fitBounds(bounds, { padding: [50, 50] });
+    } else if (item.coordinates) {
+        // Fallback if bounds invalid (e.g. only destination exists)
+        map.setView([item.coordinates.latitude, item.coordinates.longitude], 12);
     }
     
-    setTimeout(() => map.invalidateSize(), 300);
+    // Force refresh just in case
+    map.invalidateSize();
 
   }, [item, routeWithDetails, roadTripRoute, activeTab, plannerMode, startCoordinates, startLocationName]);
 
   if (!item) return null;
 
   return (
-    <div className="w-full h-full flex flex-col bg-white dark:bg-gray-900 relative">
+    <div className="w-full h-full flex flex-col bg-gradient-to-br from-green-50 via-white to-emerald-50 dark:from-gray-900 dark:via-gray-900 dark:to-green-950/20 relative">
         
         {/* Top Navigation Bar */}
-        <div className="flex flex-col border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-20 shrink-0">
+        <div className="flex flex-col border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-20 shrink-0">
             <div className="flex items-center justify-between p-4 pb-2">
                 <div>
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-2">
-                        <Route className="w-5 h-5 text-blue-500" />
+                        <Route className="w-5 h-5 text-green-600" />
                         Trip Planner
                     </h2>
                     <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
@@ -553,14 +576,14 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                     <div className="flex md:hidden bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                         <button 
                             onClick={() => setActiveTab('list')}
-                            className={`p-2 rounded-md transition-colors ${activeTab === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}
+                            className={`p-2 rounded-md transition-colors ${activeTab === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}
                             title="List View"
                         >
                             <ListIcon className="w-4 h-4" />
                         </button>
                         <button 
                             onClick={() => setActiveTab('map')}
-                            className={`p-2 rounded-md transition-colors ${activeTab === 'map' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}
+                            className={`p-2 rounded-md transition-colors ${activeTab === 'map' ? 'bg-white dark:bg-gray-700 shadow-sm text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}
                             title="Map View"
                         >
                             <MapIcon className="w-4 h-4" />
@@ -580,7 +603,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
             <div className="flex px-4 gap-6">
                 <button
                     onClick={() => setPlannerMode('destination')}
-                    className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${plannerMode === 'destination' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400'}`}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${plannerMode === 'destination' ? 'border-green-600 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 dark:text-gray-400'}`}
                 >
                     <MapIcon className="w-4 h-4" />
                     City Itinerary
@@ -599,7 +622,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
             
             {/* Sidebar / List View (Controls) */}
-            <div className={`w-full md:w-1/3 bg-gray-50 dark:bg-gray-800/50 flex flex-col border-r border-gray-200 dark:border-gray-700 h-full absolute md:relative z-10 transition-transform duration-300 ${activeTab === 'list' ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+            <div className={`w-full md:w-1/3 flex flex-col border-r border-gray-200 dark:border-gray-700 h-full absolute md:relative z-10 transition-transform duration-300 ${activeTab === 'list' ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} bg-gradient-to-b from-green-50/50 via-white to-white dark:from-green-900/10 dark:via-gray-900 dark:to-gray-900`}>
                 
                 {/* Road Trip Start Location Input */}
                 {plannerMode === 'roadtrip' && (
@@ -623,10 +646,10 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                 )}
 
                 {/* Add Place Input */}
-                <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm shrink-0">
+                <div className="p-4 bg-white/60 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700 shadow-sm shrink-0 backdrop-blur-sm">
                     <div className="flex justify-between items-center mb-2">
                         <label className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                            <Sparkles className={`w-3 h-3 ${plannerMode === 'roadtrip' ? 'text-orange-500' : 'text-blue-500'}`} />
+                            <Sparkles className={`w-3 h-3 ${plannerMode === 'roadtrip' ? 'text-orange-500' : 'text-green-600'}`} />
                             {plannerMode === 'roadtrip' ? 'Add Stop on Route' : 'Magic Add Stop'}
                         </label>
                         {plannerMode === 'destination' ? (
@@ -642,7 +665,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                                 <button 
                                     onClick={handleRegenerate} 
                                     disabled={isRegenerating || isAddingPlace}
-                                    className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-500 transition-colors"
+                                    className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600 transition-colors"
                                     title="Generate AI Itinerary"
                                 >
                                     <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin' : ''}`} />
@@ -666,14 +689,14 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                             value={newPlaceInput}
                             onChange={(e) => setNewPlaceInput(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleAddPlace()}
-                            className="flex-1 bg-gray-100 dark:bg-gray-700 border-none rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="flex-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 outline-none"
                             placeholder={plannerMode === 'roadtrip' ? "Stop name (e.g. 'Diner', 'Viewpoint')..." : "Place name (e.g. 'Eiffel Tower')..."}
                             disabled={isAddingPlace}
                         />
                         <button 
                             onClick={handleAddPlace}
                             disabled={!newPlaceInput.trim() || isAddingPlace}
-                            className={`${plannerMode === 'roadtrip' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                            className={`${plannerMode === 'roadtrip' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                         >
                             {isAddingPlace ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
                         </button>
@@ -686,7 +709,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                         <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-center p-4">
                             {isRegenerating ? (
                                 <>
-                                    <Loader2 className="w-8 h-8 mb-2 animate-spin text-blue-500" />
+                                    <Loader2 className="w-8 h-8 mb-2 animate-spin text-green-500" />
                                     <p className="text-sm">Dreaming up a route...</p>
                                 </>
                             ) : (
@@ -696,7 +719,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                                     {plannerMode === 'destination' && (
                                         <button 
                                             onClick={handleRegenerate}
-                                            className="mt-2 text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                            className="mt-2 text-xs text-green-600 hover:underline flex items-center gap-1"
                                         >
                                             <Sparkles className="w-3 h-3" /> Auto-Suggest Itinerary
                                         </button>
@@ -718,9 +741,9 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                             <div 
                                 key={idx} 
                                 onClick={() => setSelectedStop(stop)}
-                                className={`flex items-center gap-3 p-3 bg-white dark:bg-gray-800 border rounded-xl shadow-sm group transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 ${stop.isImportant ? 'border-yellow-200 dark:border-yellow-900/30 ring-1 ring-yellow-100 dark:ring-yellow-900/10' : 'border-gray-200 dark:border-gray-700'}`}
+                                className={`flex items-center gap-3 p-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border rounded-xl shadow-sm group transition-all cursor-pointer hover:bg-green-50 dark:hover:bg-gray-700/50 ${stop.isImportant ? 'border-yellow-200 dark:border-yellow-900/30 ring-1 ring-yellow-100 dark:ring-yellow-900/10' : 'border-gray-200 dark:border-gray-700'}`}
                             >
-                                <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold shrink-0 ${plannerMode === 'roadtrip' ? 'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400' : (stop.isImportant ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400')}`}>
+                                <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold shrink-0 ${plannerMode === 'roadtrip' ? 'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400' : (stop.isImportant ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400')}`}>
                                     {idx + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -756,10 +779,10 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                 </div>
 
                 {/* Footer Info & Stats */}
-                <div className="shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 space-y-3">
+                <div className="shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md space-y-3">
                     <div className="flex justify-around items-center text-xs text-gray-500 dark:text-gray-400">
                         <div className="flex flex-col items-center">
-                            <Footprints className="w-4 h-4 mb-1 text-blue-500" />
+                            <Footprints className="w-4 h-4 mb-1 text-green-600" />
                             <span className="font-bold text-gray-900 dark:text-white text-sm">{formatDistance(routeStats.totalDistance)}</span>
                             <span className="text-[9px] uppercase tracking-wider">Total Dist.</span>
                         </div>
@@ -772,115 +795,3 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                     </div>
 
                     <div className="flex gap-2">
-                        <button
-                            onClick={handleSaveRoute}
-                            disabled={isSaved || (plannerMode === 'destination' ? currentItinerary.length === 0 : roadTripStops.length === 0)}
-                            className={`flex-1 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-                                isSaved 
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                : 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:opacity-90'
-                            } ${(plannerMode === 'destination' ? currentItinerary.length === 0 : roadTripStops.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            {isSaved ? (
-                                <>
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    Route Saved!
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="w-4 h-4" />
-                                    Save {plannerMode === 'destination' ? 'City' : 'Road'} Route
-                                </>
-                            )}
-                        </button>
-
-                        <button
-                            onClick={handleStartNavigation}
-                            disabled={plannerMode === 'destination' ? routeWithDetails.length === 0 : !startCoordinates}
-                            className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Open in Google Maps"
-                        >
-                            <Navigation className="w-4 h-4" />
-                            GO
-                        </button>
-                    </div>
-                    
-                    {plannerMode === 'roadtrip' && (
-                         <div className="text-center">
-                            <p className="text-[9px] text-gray-400">Road trip route is linear: Start -> Stops -> End.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Map View */}
-            <div className="flex-1 bg-gray-100 dark:bg-gray-900 h-full relative w-full md:w-2/3">
-                <div ref={mapContainerRef} className="w-full h-full z-0" />
-            </div>
-
-            {/* STOP DETAILS MODAL */}
-            {selectedStop && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80%]">
-                        {/* Image Header */}
-                        <div className="relative h-48 bg-gray-200 dark:bg-gray-700 shrink-0">
-                            {selectedStop.images && selectedStop.images.length > 0 ? (
-                                <img 
-                                    src={selectedStop.images[0]} 
-                                    alt={selectedStop.name} 
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                    <MapPin className="w-12 h-12 mb-2 opacity-20" />
-                                    <span className="text-xs">No image available</span>
-                                    {/* Try to fallback to AI generated URL on fly if missing but name exists */}
-                                    <img 
-                                        src={`https://image.pollinations.ai/prompt/${encodeURIComponent(selectedStop.name)}?width=600&height=400&nologo=true`}
-                                        alt=""
-                                        className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"
-                                        onLoad={(e) => (e.target as HTMLImageElement).classList.remove('opacity-0')}
-                                        onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-                                    />
-                                </div>
-                            )}
-                            <button 
-                                onClick={() => setSelectedStop(null)}
-                                className="absolute top-3 right-3 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-colors"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                            {selectedStop.isImportant && (
-                                <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
-                                    <Star className="w-3 h-3 fill-current" /> Must See
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-5 overflow-y-auto">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-tight mb-2">
-                                {selectedStop.name}
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
-                                {selectedStop.description || "No description available."}
-                            </p>
-
-                            <a 
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedStop.name + ' ' + (item?.locationName || ''))}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
-                            >
-                                <Navigation className="w-4 h-4" />
-                                Navigate Here
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-        </div>
-    </div>
-  );
-};

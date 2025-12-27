@@ -269,15 +269,12 @@ export default function App() {
 
   // Calculate Dynamic Outline Color based on Theme
   const getThemeOutlineColor = () => {
-    if (theme === 'marvel') return '#ef4444'; // Red
+    // Specific Character Themes
     if (theme === 'batman') return '#FFD700'; // Yellow
     if (theme === 'elsa') return '#22d3ee'; // Light Blue
-    if (theme === 'light') return '#000000'; // Black
-    if (theme === 'dark') return '#ffffff'; // White
     
-    // System Fallback
-    const isDark = theme === 'system' ? isSystemDark : false;
-    return isDark ? '#ffffff' : '#000000';
+    // For Marvel, Light, Dark, System defaults -> Standard Red Brand Color
+    return '#ef4444'; 
   };
 
   // Filter & Search State
@@ -656,25 +653,24 @@ export default function App() {
 
   const handleDelete = (id: string) => {
     triggerHaptic('warning');
-    if (window.confirm("Are you sure you want to delete this wish?")) {
-        const itemToDelete = items.find(i => i.id === id);
-        setItems(prev => prev.filter(item => item.id !== id));
-        
-        if (itemToDelete) {
-             setActiveToast({
-                title: "Dream Deleted",
-                message: "It's gone from your list.",
-                action: {
-                    label: "Undo",
-                    onClick: () => {
-                        setItems(prev => [...prev, itemToDelete]);
-                        setActiveToast(null);
-                        triggerHaptic('success');
-                    }
+    // REMOVE CONFIRM for smoother swipe experience, rely on UNDO Toast
+    const itemToDelete = items.find(i => i.id === id);
+    setItems(prev => prev.filter(item => item.id !== id));
+    
+    if (itemToDelete) {
+            setActiveToast({
+            title: "Dream Deleted",
+            message: "It's gone from your list.",
+            action: {
+                label: "Undo",
+                onClick: () => {
+                    setItems(prev => [...prev, itemToDelete]);
+                    setActiveToast(null);
+                    triggerHaptic('success');
                 }
-            });
-            setTimeout(() => setActiveToast(null), 5000);
-        }
+            }
+        });
+        setTimeout(() => setActiveToast(null), 5000);
     }
   };
 
@@ -901,7 +897,7 @@ export default function App() {
         <div className="max-w-2xl mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <BucketLogo onClickVersion={() => setIsChangelogOpen(true)} outlineColor="#ef4444" />
+              <BucketLogo onClickVersion={() => setIsChangelogOpen(true)} outlineColor={getThemeOutlineColor()} />
             </div>
             
             <div className="flex items-center gap-2">

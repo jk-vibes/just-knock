@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { BucketItemDraft, ItineraryItem } from "../types";
 
@@ -54,11 +53,11 @@ const bucketItemSchema = {
                 description: { type: Type.STRING, description: "Short description" },
                 latitude: { type: Type.NUMBER, description: "Latitude of this specific place" },
                 longitude: { type: Type.NUMBER, description: "Longitude of this specific place" },
-                isImportant: { type: Type.BOOLEAN, description: "Set to true if this is a major, must-see landmark (Top 5-7)." },
-                imageKeyword: { type: Type.STRING, description: "Visual keyword for finding a photo of this specific place." }
+                isImportant: { type: Type.BOOLEAN, description: "Set to true for must-see landmarks." },
+                imageKeyword: { type: Type.STRING, description: "MANDATORY: Visual keyword for finding a photo of this specific place (e.g. 'Eiffel Tower', 'Colosseum')." }
             }
         },
-        description: "If the item is a City or Region (e.g. 'Visit Tokyo'), provide a list of 15 top specific places/attractions to visit there as an itinerary. Provide real coordinates for them if possible. Mark the top 5-7 absolute must-sees as isImportant=true."
+        description: "If the item is a City or Region (e.g. 'Visit Tokyo'), provide a list of ALL absolute must-see specific places/attractions to visit there as an itinerary. Do not limit the number of places. Provide real coordinates for them if possible. Mark them as isImportant=true."
     }
   },
   required: ["title", "description", "imageKeyword", "category", "interests"]
@@ -70,7 +69,8 @@ const placeDetailsSchema = {
     name: { type: Type.STRING, description: "Corrected formal name of the place" },
     description: { type: Type.STRING, description: "Very short description (5-10 words)" },
     latitude: { type: Type.NUMBER },
-    longitude: { type: Type.NUMBER }
+    longitude: { type: Type.NUMBER },
+    imageKeyword: { type: Type.STRING, description: "Visual keyword for this place" }
   },
   required: ["name", "latitude", "longitude"]
 };
@@ -96,7 +96,7 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       1. If the user specifies a place, use that location.
       2. If it is an activity implies a location (e.g. "Go skydiving"), suggest the single best place in the world for it.
       3. If it is a NON-LOCATION goal (e.g. "Buy a Mercedes", "Learn Spanish", "Run a Marathon", "Read 100 books"), leave locationName empty and coordinates as 0.
-      4. If the input is a City (e.g. 'Paris', 'New York'), generate a comprehensive itinerary of top 15 spots in the 'itinerary' field.
+      4. If the input is a City (e.g. 'Paris', 'New York'), generate a comprehensive itinerary of ALL must-see spots in the 'itinerary' field.
       
       Classify the item into EXACTLY ONE of these categories: [${categoriesString}]. If none fit perfectly, choose "Other" or "Personal Growth" or "Luxury".
       Generate a single specific visual keyword phrase to find one perfect picture for this activity or object.
@@ -240,7 +240,8 @@ export const getPlaceDetails = async (placeName: string, contextLocation?: strin
             name: data.name,
             description: data.description,
             completed: false,
-            coordinates: { latitude: data.latitude, longitude: data.longitude }
+            coordinates: { latitude: data.latitude, longitude: data.longitude },
+            images: data.imageKeyword ? generateImageUrls([data.imageKeyword]) : []
         };
     } catch (error) {
         console.error("Failed to get place details", error);
@@ -251,9 +252,9 @@ export const getPlaceDetails = async (placeName: string, contextLocation?: strin
 export const generateItineraryForLocation = async (locationName: string): Promise<ItineraryItem[]> => {
     try {
         const prompt = `Generate a comprehensive travel itinerary for "${locationName}".
-        List top 15 specific places/attractions to visit.
+        List ALL absolute must-see specific places/attractions to visit. Do not limit the number of places.
         Provide real coordinates.
-        Mark the top 5-7 absolute must-visit landmarks with isImportant=true.
+        Mark them with isImportant=true.
         Provide a specific visual imageKeyword for each place.`;
 
         const response = await ai.models.generateContent({
@@ -295,6 +296,9 @@ export const reverseGeocode = async (lat: number, lng: number): Promise<string> 
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: prompt,
+            config: {
+                responseMimeType: "text/plain"
+            }
         });
         return response.text?.trim() || "My Location";
     } catch (e) {
