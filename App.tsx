@@ -564,7 +564,8 @@ export default function App() {
                 completedAt: draft.isCompleted ? draft.completedAt : (draft.isCompleted === false ? undefined : item.completedAt),
                 bestTimeToVisit: draft.bestTimeToVisit,
                 // itinerary is preserved or updated
-                itinerary: draft.itinerary
+                itinerary: draft.itinerary,
+                roadTrip: draft.roadTrip // Preserve or update
             } : item
         ));
         setEditingItem(null);
@@ -586,7 +587,8 @@ export default function App() {
         interests: draft.interests,
         owner: draft.owner,
         bestTimeToVisit: draft.bestTimeToVisit,
-        itinerary: draft.itinerary
+        itinerary: draft.itinerary,
+        roadTrip: draft.roadTrip
         };
         setItems(prev => [newItem, ...prev]);
     }
@@ -986,6 +988,7 @@ export default function App() {
                 item={planningItem} 
                 onClose={() => setPlanningItem(null)} 
                 onUpdateItem={handleUpdateItem}
+                userLocation={userLocation}
             />
         ) : (
             <div className="max-w-2xl mx-auto px-4 py-2 space-y-2 w-full overflow-y-auto no-scrollbar h-full">

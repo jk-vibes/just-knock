@@ -13,6 +13,12 @@ export interface ItineraryItem {
   images?: string[]; // Array of image URLs
 }
 
+export interface RoadTripDetails {
+  startLocation?: string;
+  startCoordinates?: Coordinates;
+  stops: ItineraryItem[];
+}
+
 export interface BucketItem {
   id: string;
   title: string;
@@ -28,6 +34,7 @@ export interface BucketItem {
   owner?: string;
   bestTimeToVisit?: string;
   itinerary?: ItineraryItem[];
+  roadTrip?: RoadTripDetails;
 }
 
 export interface BucketItemDraft {
@@ -44,6 +51,7 @@ export interface BucketItemDraft {
   completedAt?: number;
   bestTimeToVisit?: string;
   itinerary?: ItineraryItem[];
+  roadTrip?: RoadTripDetails;
 }
 
 export interface AppNotification {

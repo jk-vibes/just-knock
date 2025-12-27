@@ -16,7 +16,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
     {
         icon: <Map className="w-5 h-5 text-blue-500" />,
         title: "Extended Itineraries",
-        desc: "Now generates up to 30 top places for city destinations with AI."
+        desc: "Now generates up to 15 top places for city destinations with AI."
     },
     {
         icon: <ImageIcon className="w-5 h-5 text-purple-500" />,
@@ -39,7 +39,9 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
       {
           date: "Latest Update (v1.6)",
           changes: [
-              "Itinerary Generator: Increased limit to 30 places",
+              "Added 'GO' navigation button for instant Google Maps routing",
+              "Trip Planner UI improvements: New layout for controls",
+              "Itinerary Generator: Optimized limit to 15 top places",
               "Visual Update: Added photos for itinerary stops",
               "Smart Ranking: Star indicators for top landmarks",
               "New 'Refresh' button to regenerate trip plans",

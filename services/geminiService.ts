@@ -54,11 +54,11 @@ const bucketItemSchema = {
                 description: { type: Type.STRING, description: "Short description" },
                 latitude: { type: Type.NUMBER, description: "Latitude of this specific place" },
                 longitude: { type: Type.NUMBER, description: "Longitude of this specific place" },
-                isImportant: { type: Type.BOOLEAN, description: "Set to true if this is a major, must-see landmark (Top 8-10)." },
+                isImportant: { type: Type.BOOLEAN, description: "Set to true if this is a major, must-see landmark (Top 5-7)." },
                 imageKeyword: { type: Type.STRING, description: "Visual keyword for finding a photo of this specific place." }
             }
         },
-        description: "If the item is a City or Region (e.g. 'Visit Tokyo'), provide a list of 30 top specific places/attractions to visit there as an itinerary. Provide real coordinates for them if possible. Mark the top 8-10 absolute must-sees as isImportant=true."
+        description: "If the item is a City or Region (e.g. 'Visit Tokyo'), provide a list of 15 top specific places/attractions to visit there as an itinerary. Provide real coordinates for them if possible. Mark the top 5-7 absolute must-sees as isImportant=true."
     }
   },
   required: ["title", "description", "imageKeyword", "category", "interests"]
@@ -96,7 +96,7 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       1. If the user specifies a place, use that location.
       2. If it is an activity implies a location (e.g. "Go skydiving"), suggest the single best place in the world for it.
       3. If it is a NON-LOCATION goal (e.g. "Buy a Mercedes", "Learn Spanish", "Run a Marathon", "Read 100 books"), leave locationName empty and coordinates as 0.
-      4. If the input is a City (e.g. 'Paris', 'New York'), generate a comprehensive itinerary of top 30 spots in the 'itinerary' field.
+      4. If the input is a City (e.g. 'Paris', 'New York'), generate a comprehensive itinerary of top 15 spots in the 'itinerary' field.
       
       Classify the item into EXACTLY ONE of these categories: [${categoriesString}]. If none fit perfectly, choose "Other" or "Personal Growth" or "Luxury".
       Generate a single specific visual keyword phrase to find one perfect picture for this activity or object.
@@ -251,9 +251,9 @@ export const getPlaceDetails = async (placeName: string, contextLocation?: strin
 export const generateItineraryForLocation = async (locationName: string): Promise<ItineraryItem[]> => {
     try {
         const prompt = `Generate a comprehensive travel itinerary for "${locationName}".
-        List top 30 specific places/attractions to visit.
+        List top 15 specific places/attractions to visit.
         Provide real coordinates.
-        Mark the top 8-10 absolute must-visit landmarks with isImportant=true.
+        Mark the top 5-7 absolute must-visit landmarks with isImportant=true.
         Provide a specific visual imageKeyword for each place.`;
 
         const response = await ai.models.generateContent({
@@ -286,5 +286,103 @@ export const generateItineraryForLocation = async (locationName: string): Promis
     } catch (error) {
         console.error("Failed to generate itinerary", error);
         return [];
+    }
+};
+
+export const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+    try {
+        const prompt = `Identify the city and country for coordinates: ${lat}, ${lng}. Return ONLY the "City, Country" string.`;
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: prompt,
+        });
+        return response.text?.trim() || "My Location";
+    } catch (e) {
+        return "My Location";
+    }
+};
+
+export const generateRoadTripStops = async (start: string, end: string): Promise<ItineraryItem[]> => {
+    try {
+        const prompt = `Plan a road trip from "${start}" to "${end}".
+        Suggest 5-8 interesting stops along the way (cities, landmarks, or attractions).
+        For each stop, provide:
+        - name (Name of the place)
+        - description (Why stop here?)
+        - latitude & longitude (Approximate coordinates)
+        - imageKeyword (Visual search term)
+        Return JSON format with schema: { stops: [ { name, description, latitude, longitude, imageKeyword } ] }`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        stops: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    name: { type: Type.STRING },
+                                    description: { type: Type.STRING },
+                                    latitude: { type: Type.NUMBER },
+                                    longitude: { type: Type.NUMBER },
+                                    imageKeyword: { type: Type.STRING }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        const data = JSON.parse(response.text || "{}");
+        return (data.stops || []).map((item: any) => ({
+            name: item.name,
+            description: item.description,
+            coordinates: { latitude: item.latitude, longitude: item.longitude },
+            completed: false,
+            images: item.imageKeyword ? generateImageUrls([item.imageKeyword]) : []
+        }));
+    } catch (error) {
+        console.error("Road trip generation failed", error);
+        return [];
+    }
+};
+
+export const optimizeRouteOrder = async (locationName: string, stops: string[]): Promise<string[]> => {
+    try {
+        const prompt = `You are a travel expert. Optimize the visiting order for these places in "${locationName}" to create the shortest, most efficient path:
+        ${JSON.stringify(stops)}
+        
+        Return ONLY a JSON object with the ordered list of names:
+        { "optimizedOrder": ["Name 1", "Name 2", ...] }
+        Maintain the exact names provided.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        optimizedOrder: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        }
+                    }
+                }
+            }
+        });
+        
+        const data = JSON.parse(response.text || "{}");
+        return data.optimizedOrder || stops;
+    } catch (e) {
+        console.error("Route optimization failed", e);
+        return stops;
     }
 };
