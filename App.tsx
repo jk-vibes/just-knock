@@ -808,8 +808,8 @@ export default function App() {
         case 'batman':
             return { 
                 outline: '#f59e0b', // Yellow
-                front: '#1f2937',   // Dark Gray Water
-                back: '#374151', 
+                front: '#9ca3af',   // Light Grey Water (was dark gray)
+                back: '#6b7280',    // Medium Grey (was dark gray)
                 badgeBorder: '#f59e0b',
                 badgeText: '#000000',
                 badgeBg: '#f59e0b'
@@ -995,7 +995,7 @@ export default function App() {
               >
                 <Bell className="w-5 h-5" />
                 {unreadNotifications > 0 && (
-                   <span className="absolute top-0 right-0 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900">
+                   <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 shadow-sm">
                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
                    </span>
                 )}
@@ -1119,7 +1119,7 @@ export default function App() {
                             </div>
                             {/* Centered % (Optional) */}
                             <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
-                                <span className="text-[9px] font-black text-black/20 dark:text-black/30 drop-shadow-sm">{Math.round(progressMeter)}%</span>
+                                <span className={`text-[9px] font-black drop-shadow-sm ${theme === 'batman' ? 'text-gray-400' : 'text-black/20 dark:text-black/30'}`}>{Math.round(progressMeter)}%</span>
                             </div>
                         </div>
                     </div>
