@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, CheckCircle2, Circle, Image as ImageIcon, Plus, Trash2, Link, Sun } from 'lucide-react';
+import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, Sun, Image as ImageIcon } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem } from '../services/geminiService';
 import { BucketItemDraft, BucketItem } from '../types';
 import { CategoryIcon } from './CategoryIcon';
@@ -136,7 +136,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         interests: selectedInterests,
         owner: selectedOwner,
         isCompleted: isCompleted,
-        completedAt: completedTimestamp
+        completedAt: completedTimestamp,
+        // Itinerary is preserved from draft (AI generated) but not editable here
+        itinerary: draft.itinerary 
       });
       onClose();
     }
@@ -184,7 +186,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           {mode === 'add' && !draft && (
             <>
                 <p className="text-gray-500 dark:text-gray-400 mb-5 text-sm">
-                    Type your dream (e.g., "See the Northern Lights" or "Buy a Mercedes") and let AI fill in the details.
+                    Type your dream (e.g., "See the Northern Lights" or "Visit Tokyo") and let AI fill in the details.
                 </p>
                 <div className="space-y-3">
                 <textarea

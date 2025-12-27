@@ -4,6 +4,15 @@ export interface Coordinates {
   longitude: number;
 }
 
+export interface ItineraryItem {
+  name: string;
+  description?: string;
+  completed?: boolean;
+  coordinates?: Coordinates;
+  isImportant?: boolean;
+  images?: string[]; // Array of image URLs
+}
+
 export interface BucketItem {
   id: string;
   title: string;
@@ -18,6 +27,7 @@ export interface BucketItem {
   interests?: string[];
   owner?: string;
   bestTimeToVisit?: string;
+  itinerary?: ItineraryItem[];
 }
 
 export interface BucketItemDraft {
@@ -33,6 +43,7 @@ export interface BucketItemDraft {
   isCompleted?: boolean;
   completedAt?: number;
   bestTimeToVisit?: string;
+  itinerary?: ItineraryItem[];
 }
 
 export interface AppNotification {

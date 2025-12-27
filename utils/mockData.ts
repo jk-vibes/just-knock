@@ -21,7 +21,12 @@ const CURATED_ITEMS: BucketItem[] = [
     category: "Culture",
     interests: ["Temple", "Spiritual", "Pilgrimage"],
     completed: false,
-    createdAt: Date.now() - ONE_YEAR_MS * 2
+    createdAt: Date.now() - ONE_YEAR_MS * 2,
+    itinerary: [
+        { name: "Sri Venkateswara Temple", description: "Main temple for darshan.", completed: false },
+        { name: "Akasa Ganga", description: "Sacred waterfall.", completed: true },
+        { name: "Silathoranam", description: "Natural rock formation.", completed: false }
+    ]
   },
   {
     id: "ind-t-2",
@@ -223,7 +228,8 @@ const generateItem = (index: number): BucketItem => {
     interests: [...activity.tags, city.country],
     completed: isCompleted,
     createdAt: createdTime,
-    completedAt: completedAt
+    completedAt: completedAt,
+    itinerary: [] // No generated itinerary for mock items to save space
   };
 };
 

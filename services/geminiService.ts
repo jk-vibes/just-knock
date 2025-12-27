@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { BucketItemDraft } from "../types";
+import { BucketItemDraft, ItineraryItem } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -44,9 +44,35 @@ const bucketItemSchema = {
     bestTimeToVisit: {
         type: Type.STRING,
         description: "The best months or season to do this. If not seasonal (e.g. buying something), return 'Anytime'."
+    },
+    itinerary: {
+        type: Type.ARRAY,
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                name: { type: Type.STRING, description: "Name of the place/activity" },
+                description: { type: Type.STRING, description: "Short description" },
+                latitude: { type: Type.NUMBER, description: "Latitude of this specific place" },
+                longitude: { type: Type.NUMBER, description: "Longitude of this specific place" },
+                isImportant: { type: Type.BOOLEAN, description: "Set to true if this is a major, must-see landmark (Top 8-10)." },
+                imageKeyword: { type: Type.STRING, description: "Visual keyword for finding a photo of this specific place." }
+            }
+        },
+        description: "If the item is a City or Region (e.g. 'Visit Tokyo'), provide a list of 30 top specific places/attractions to visit there as an itinerary. Provide real coordinates for them if possible. Mark the top 8-10 absolute must-sees as isImportant=true."
     }
   },
   required: ["title", "description", "imageKeyword", "category", "interests"]
+};
+
+const placeDetailsSchema = {
+  type: Type.OBJECT,
+  properties: {
+    name: { type: Type.STRING, description: "Corrected formal name of the place" },
+    description: { type: Type.STRING, description: "Very short description (5-10 words)" },
+    latitude: { type: Type.NUMBER },
+    longitude: { type: Type.NUMBER }
+  },
+  required: ["name", "latitude", "longitude"]
 };
 
 // Helper to generate multiple image URLs based on keywords with variations
@@ -70,6 +96,7 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       1. If the user specifies a place, use that location.
       2. If it is an activity implies a location (e.g. "Go skydiving"), suggest the single best place in the world for it.
       3. If it is a NON-LOCATION goal (e.g. "Buy a Mercedes", "Learn Spanish", "Run a Marathon", "Read 100 books"), leave locationName empty and coordinates as 0.
+      4. If the input is a City (e.g. 'Paris', 'New York'), generate a comprehensive itinerary of top 30 spots in the 'itinerary' field.
       
       Classify the item into EXACTLY ONE of these categories: [${categoriesString}]. If none fit perfectly, choose "Other" or "Personal Growth" or "Luxury".
       Generate a single specific visual keyword phrase to find one perfect picture for this activity or object.
@@ -90,6 +117,14 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
     // Clean up empty location strings
     const hasLocation = data.locationName && data.locationName.trim() !== '' && data.latitude !== 0;
 
+    const cleanItinerary = (data.itinerary || []).map((item: any) => ({
+        name: item.name,
+        description: item.description,
+        coordinates: (item.latitude && item.longitude) ? { latitude: item.latitude, longitude: item.longitude } : undefined,
+        isImportant: item.isImportant || false,
+        images: item.imageKeyword ? generateImageUrls([item.imageKeyword]) : []
+    }));
+
     return {
       title: data.title,
       description: data.description,
@@ -99,7 +134,8 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       images: data.imageKeyword ? generateImageUrls([data.imageKeyword]) : [],
       category: data.category,
       interests: data.interests || [],
-      bestTimeToVisit: data.bestTimeToVisit || 'Anytime'
+      bestTimeToVisit: data.bestTimeToVisit || 'Anytime',
+      itinerary: cleanItinerary
     };
   } catch (error) {
     console.error("Gemini analysis failed", error);
@@ -144,6 +180,14 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
       const data = JSON.parse(text);
       const hasLocation = data.locationName && data.locationName.trim() !== '' && data.latitude !== 0;
 
+      const cleanItinerary = (data.itinerary || []).map((item: any) => ({
+        name: item.name,
+        description: item.description,
+        coordinates: (item.latitude && item.longitude) ? { latitude: item.latitude, longitude: item.longitude } : undefined,
+        isImportant: item.isImportant || false,
+        images: item.imageKeyword ? generateImageUrls([item.imageKeyword]) : []
+    }));
+
       return {
         title: data.title,
         description: data.description,
@@ -153,7 +197,8 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
         images: data.imageKeyword ? generateImageUrls([data.imageKeyword]) : [],
         category: data.category,
         interests: data.interests || [],
-        bestTimeToVisit: data.bestTimeToVisit || 'Anytime'
+        bestTimeToVisit: data.bestTimeToVisit || 'Anytime',
+        itinerary: cleanItinerary
       };
     } catch (error) {
       console.error("Gemini suggestion failed", error);
@@ -167,7 +212,79 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
         images: generateImageUrls(keywords),
         category: "Travel",
         interests: ["History", "Wonder"],
-        bestTimeToVisit: "October to April"
+        bestTimeToVisit: "October to April",
+        itinerary: []
       };
     }
-  };
+};
+
+export const getPlaceDetails = async (placeName: string, contextLocation?: string): Promise<ItineraryItem | null> => {
+    try {
+        const prompt = `Get coordinates and details for place: "${placeName}"${contextLocation ? ` near ${contextLocation}` : ''}. Return JSON.`;
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: placeDetailsSchema
+            }
+        });
+        
+        const text = response.text;
+        if (!text) throw new Error("No response from AI");
+
+        const data = JSON.parse(text);
+        if (!data.latitude) return null;
+
+        return {
+            name: data.name,
+            description: data.description,
+            completed: false,
+            coordinates: { latitude: data.latitude, longitude: data.longitude }
+        };
+    } catch (error) {
+        console.error("Failed to get place details", error);
+        return null;
+    }
+};
+
+export const generateItineraryForLocation = async (locationName: string): Promise<ItineraryItem[]> => {
+    try {
+        const prompt = `Generate a comprehensive travel itinerary for "${locationName}".
+        List top 30 specific places/attractions to visit.
+        Provide real coordinates.
+        Mark the top 8-10 absolute must-visit landmarks with isImportant=true.
+        Provide a specific visual imageKeyword for each place.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                         itinerary: bucketItemSchema.properties.itinerary
+                    }
+                }
+            }
+        });
+
+        const text = response.text;
+        if (!text) throw new Error("No response from AI");
+        const data = JSON.parse(text);
+        
+        return (data.itinerary || []).map((item: any) => ({
+            name: item.name,
+            description: item.description,
+            coordinates: (item.latitude && item.longitude) ? { latitude: item.latitude, longitude: item.longitude } : undefined,
+            isImportant: item.isImportant || false,
+            completed: false,
+            images: item.imageKeyword ? generateImageUrls([item.imageKeyword]) : []
+        }));
+
+    } catch (error) {
+        console.error("Failed to generate itinerary", error);
+        return [];
+    }
+};

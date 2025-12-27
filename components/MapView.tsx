@@ -133,7 +133,13 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
             if (dist < proximityRange) isNearby = true;
         }
 
-        const color = item.completed ? '#22c55e' : '#ef4444'; // Green or Red
+        // Determine Pin Color
+        let color = '#3b82f6'; // Standard Blue for Pending
+        if (item.completed) {
+            color = '#22c55e'; // Green for Completed
+        } else if (isNearby) {
+            color = '#ef4444'; // Red for Nearby
+        }
         
         // Pin SVG (Smaller, cleaner, no thick white stroke)
         const pinSvg = `
@@ -144,7 +150,7 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
 
         let iconHtml;
         if (isNearby) {
-            // Pulse effect for nearby
+            // Pulse effect for nearby (Red)
             iconHtml = `
               <div class="relative flex items-center justify-center w-full h-full">
                 <span class="absolute bottom-0 w-3 h-3 bg-red-500 rounded-full animate-ping opacity-75"></span>
@@ -176,7 +182,7 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
             <p style="font-size: 12px; color: #4b5563; margin: 0 0 12px 0; line-height: 1.4;">
               ${item.description}
             </p>
-            <a href="${navUrl}" target="_blank" style="display: block; width: 100%; text-align: center; background-color: #ef4444; color: white; padding: 8px 0; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background-color 0.2s;">
+            <a href="${navUrl}" target="_blank" style="display: block; width: 100%; text-align: center; background-color: #3b82f6; color: white; padding: 8px 0; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background-color 0.2s;">
               Navigate to Location
             </a>
           </div>
@@ -222,7 +228,7 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
                  
                  <div className="flex flex-col items-end">
                      <div className="flex items-center gap-1.5">
-                        <Target className="w-3.5 h-3.5 text-red-500" />
+                        <Target className="w-3.5 h-3.5 text-blue-500" />
                         <span className="text-sm font-black text-gray-800 dark:text-gray-100">{stats.pending}</span>
                      </div>
                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Pending</span>

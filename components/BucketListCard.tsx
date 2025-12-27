@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MapPin, Navigation, CheckCircle2, Circle, Trash2, Pencil, Image as ImageIcon, Calendar, Sparkles } from 'lucide-react';
+import { MapPin, Navigation, CheckCircle2, Circle, Trash2, Pencil, Image as ImageIcon, Calendar, Sparkles, Map, Route } from 'lucide-react';
 import { BucketItem, Coordinates, Theme } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 import { CategoryIcon } from './CategoryIcon';
@@ -14,6 +14,8 @@ interface BucketListCardProps {
   onViewImages: (item: BucketItem) => void;
   onCategoryClick?: (category: string) => void;
   onInterestClick?: (interest: string) => void;
+  onToggleItineraryItem?: (itemId: string, index: number) => void;
+  onOpenPlanner?: (item: BucketItem) => void;
   isCompact?: boolean;
   proximityRange?: number;
   theme?: Theme;
@@ -64,6 +66,7 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
   onViewImages,
   onCategoryClick,
   onInterestClick,
+  onOpenPlanner,
   isCompact = false,
   proximityRange = 10000,
   theme
@@ -92,7 +95,7 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
 
   return (
     <div 
-        className={`relative group bg-white dark:bg-gray-800 rounded-2xl shadow-sm border transition-all duration-300 overflow-hidden ${isCompact ? 'p-2' : 'p-3.5'} ${isNearby ? 'border-orange-400 ring-1 ring-orange-100 dark:ring-orange-900/30' : 'border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-red-200 dark:hover:border-gray-600'}`}
+        className={`relative group bg-white dark:bg-gray-800 rounded-2xl shadow-sm border transition-all duration-300 overflow-visible ${isCompact ? 'p-2' : 'p-3.5'} ${isNearby ? 'border-orange-400 ring-1 ring-orange-100 dark:ring-orange-900/30' : 'border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-red-200 dark:hover:border-gray-600'}`}
     >
       
       {/* Background Progress Bar */}
@@ -115,6 +118,20 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
             </div>
         )}
       </div>
+
+      {/* Trip Planner Icon (Top Right) */}
+      {hasCoordinates && onOpenPlanner && (
+        <button
+            onClick={(e) => {
+                e.stopPropagation();
+                onOpenPlanner(item);
+            }}
+            className={`absolute top-2 right-9 z-20 p-1.5 rounded-full bg-white/90 dark:bg-gray-800/90 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 shadow-sm hover:scale-110 hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-all ${isCompact ? 'right-8 top-1.5 p-1' : ''}`}
+            title="Plan Trip Itinerary"
+        >
+            <Route className={isCompact ? "w-3 h-3" : "w-3.5 h-3.5"} />
+        </button>
+      )}
 
       <div className="flex justify-between items-start gap-3 relative z-10">
         <div className="flex-1 min-w-0">

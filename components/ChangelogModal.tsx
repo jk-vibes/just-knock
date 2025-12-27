@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, CheckCircle2, Rocket, Map, Cloud, Sparkles, History, Users, Star } from 'lucide-react';
+import { X, CheckCircle2, Rocket, Map, Cloud, Sparkles, History, Users, Star, Image as ImageIcon } from 'lucide-react';
 
 interface ChangelogModalProps {
   isOpen: boolean;
@@ -14,30 +14,40 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   const features = [
     {
-        icon: <Users className="w-5 h-5 text-purple-500" />,
-        title: "Family Buckets",
-        desc: "Add family members in settings and assign wishes to them. Filter the list to see specific member dreams."
-    },
-    {
         icon: <Map className="w-5 h-5 text-blue-500" />,
-        title: "Location Radar",
-        desc: "Get notified when you are within 2km of a bucket list item."
+        title: "Extended Itineraries",
+        desc: "Now generates up to 30 top places for city destinations with AI."
     },
     {
-        icon: <Cloud className="w-5 h-5 text-purple-500" />,
-        title: "Cloud Backup",
-        desc: "Securely backup your dreams to your Google Drive."
+        icon: <ImageIcon className="w-5 h-5 text-purple-500" />,
+        title: "Visual Trip Planner",
+        desc: "See photos for every stop in your itinerary and get navigation details."
     },
     {
-        icon: <Sparkles className="w-5 h-5 text-yellow-500" />,
-        title: "AI Magic Fill",
-        desc: "Type a simple wish and let AI fill in the location and details."
+        icon: <Star className="w-5 h-5 text-yellow-500" />,
+        title: "Must-See Highlights",
+        desc: "Top landmarks are now automatically starred as 'Must See' locations."
+    },
+    {
+        icon: <Users className="w-5 h-5 text-green-500" />,
+        title: "Family Buckets",
+        desc: "Assign wishes to family members and filter by person."
     }
   ];
 
   const history = [
       {
-          date: "Latest Update (v1.5)",
+          date: "Latest Update (v1.6)",
+          changes: [
+              "Itinerary Generator: Increased limit to 30 places",
+              "Visual Update: Added photos for itinerary stops",
+              "Smart Ranking: Star indicators for top landmarks",
+              "New 'Refresh' button to regenerate trip plans",
+              "Added details view for individual stops"
+          ]
+      },
+      {
+          date: "v1.5",
           changes: [
               "Automatic Google Drive Backup (Every 24h)",
               "Restored Icon-based Filter Toolbar (Todo/Done)",
@@ -94,7 +104,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-100 relative h-[60vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-100 relative h-[50vh] flex flex-col">
         {/* Close Button */}
         <button 
             onClick={onClose}
@@ -111,7 +121,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
                 <Star className="absolute bottom-2 right-10 w-6 h-6 text-yellow-300 animate-pulse" />
             </div>
 
-            <h2 className="text-lg font-bold mb-0.5 relative z-10">Just Knock v1.5</h2>
+            <h2 className="text-lg font-bold mb-0.5 relative z-10">Just Knock v1.6</h2>
             <p className="text-red-100 text-[10px] font-medium opacity-90 relative z-10 uppercase tracking-widest">
                 {activeTab === 'highlights' ? "Feature Highlights" : "Version History"}
             </p>
@@ -171,7 +181,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
                                 </div>
                             ))}
                         </div>
-                        <div className="text-center pt-4">
+                        <div className="text-center pt-2">
                              <p className="text-[9px] text-gray-400">Enjoy the new updates!</p>
                         </div>
                     </div>
