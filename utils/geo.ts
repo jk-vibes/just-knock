@@ -74,30 +74,46 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 
 export const sendNotification = async (title: string, body: string, tag: string = 'jk-proximity') => {
   if (Notification.permission === "granted") {
-    // Try to use Service Worker registration for "System" style notifications on Android
+    let sent = false;
+
+    // 1. Try Service Worker (Best for Mobile/PWA)
     if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        if(registration) {
-            try {
-                await registration.showNotification(title, {
-                    body,
-                    icon: '/icon.svg',
-                    badge: '/icon.svg',
-                    vibrate: [200, 100, 200],
-                    tag: tag
-                } as any);
-                return;
-            } catch (e) {
-                console.warn("SW Notification failed, falling back", e);
-            }
+      try {
+        // Race condition: if SW isn't ready in 1s, fall back to standard notification
+        const registration = await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise((_, reject) => setTimeout(() => reject('SW timeout'), 1000))
+        ]) as ServiceWorkerRegistration;
+
+        if (registration && registration.showNotification) {
+            await registration.showNotification(title, {
+                body,
+                icon: '/icon.svg',
+                badge: '/icon.svg',
+                vibrate: [200, 100, 200],
+                tag: tag,
+                data: { url: '/' }
+            } as any);
+            sent = true;
         }
+      } catch (e) {
+        console.warn("SW Notification failed or timed out, using fallback", e);
+      }
     }
 
-    // Fallback for desktop or if SW fails
-    new Notification(title, {
-      body,
-      icon: '/icon.svg',
-      tag: tag
-    });
+    // 2. Fallback to standard Notification API if SW failed or not available
+    if (!sent) {
+        try {
+            const n = new Notification(title, {
+                body,
+                icon: '/icon.svg',
+                tag: tag
+            });
+            // Close after 5s if not interacted with (optional cleanup)
+            setTimeout(n.close.bind(n), 5000);
+        } catch(e) {
+            console.error("Standard Notification failed", e);
+        }
+    }
   }
 };

@@ -486,9 +486,18 @@ export default function App() {
             (error) => {
               console.error("Location error:", error);
               setLocating(false);
-              setIsRadarOn(false);
+              // Only turn off radar if permission is denied. For timeout or unavailable, just log it.
+              if (error.code === 1) { // PERMISSION_DENIED
+                  setIsRadarOn(false);
+                  alert("Location permission denied. Radar turned off.");
+              } else if (error.code === 2) { // POSITION_UNAVAILABLE
+                  // Keep trying, maybe transient
+              } else if (error.code === 3) { // TIMEOUT
+                  // Keep trying
+                  console.warn("Location timed out, retrying...");
+              }
             },
-            { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+            { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 } // Increased timeout to 20s
           );
         } else {
           alert("Geolocation is not supported by your browser.");
@@ -507,6 +516,7 @@ export default function App() {
   }, [isRadarOn, addAppNotification]);
 
   const handleAddItem = (draft: BucketItemDraft) => {
+    // ... existing handleAddItem code ...
     triggerHaptic('success');
     if (editingItem) {
         setItems(prev => prev.map(item => 
@@ -554,6 +564,7 @@ export default function App() {
     setIsAddModalOpen(false);
   };
 
+  // ... rest of the App component ...
   const handleAddSeparateItem = (newItem: BucketItem) => {
       setItems(prev => [newItem, ...prev]);
       triggerHaptic('success');

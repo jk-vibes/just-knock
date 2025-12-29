@@ -36,13 +36,25 @@ self.addEventListener('fetch', (event) => {
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  
+  const urlToOpen = event.notification.data?.url || '/';
+
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      // Focus existing window if open
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // 1. Try to find a matching window to focus
       for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) return client.focus();
+        if ('focus' in client) {
+            // Focus ANY window of this app, regardless of deep link status, then navigate
+            return client.focus().then(c => {
+                if (c && 'navigate' in c) {
+                    // Optional: Navigate to specific part if needed
+                    // return c.navigate(urlToOpen); 
+                }
+            });
+        }
       }
-      if (clients.openWindow) return clients.openWindow('/');
+      // 2. If no window, open a new one
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
     })
   );
 });

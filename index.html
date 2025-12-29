@@ -65,15 +65,14 @@
       }
       
       /* --- MARVEL THEME --- */
-      /* Palette based on Captain America Shield */
-      /* Red: #dc2626, Blue: #1e3a8a, White: #FFFFFF, Silver: #f8fafc */
+      /* Header: Dark Blue (#1e3a8a), Accents Red (#dc2626) */
       
       [data-theme='marvel'] body {
         background-color: #f8fafc !important; /* Slate-50 */
         color: #1e293b;
       }
 
-      /* Header: Captain America Blue */
+      /* Header: Dark Blue */
       [data-theme='marvel'] header { 
         background-color: #1e3a8a !important; /* Blue-900 */
         border-bottom: 4px solid #dc2626 !important; /* Red-600 */
@@ -101,10 +100,10 @@
         color: #fff !important;
       }
 
-      /* Active Header Buttons (e.g. Radar On) - Force Red Background for Contrast against White Icons */
+      /* Active Header Buttons (Radar On) - Red */
       [data-theme='marvel'] header button.bg-red-50 {
         background-color: #dc2626 !important; /* Red-600 */
-        border-color: #991b1b !important; /* Red-800 */
+        border-color: #b91c1c !important; /* Red-700 */
         color: #FFFFFF !important;
         box-shadow: 0 0 10px rgba(220, 38, 38, 0.5) !important;
       }
@@ -114,27 +113,27 @@
         --tw-ring-opacity: 0.5 !important;
       }
 
-      /* Cards */
+      /* Cards - Blue Accent */
       [data-theme='marvel'] .bg-white { 
         background-color: #FFFFFF !important;
         border: 1px solid #e2e8f0 !important;
-        border-left: 4px solid #1d4ed8 !important; /* Blue accent */
+        border-left: 4px solid #1e3a8a !important; /* Blue accent */
       }
       
-      /* Primary Actions - Blue with Red glow */
+      /* Primary Actions - Red */
       [data-theme='marvel'] .bg-red-600,
       [data-theme='marvel'] .bg-gradient-to-br,
       [data-theme='marvel'] .bg-gradient-to-r {
-        background-image: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important; /* Blue Gradient */
-        background-color: #1d4ed8 !important;
-        box-shadow: 0 4px 14px 0 rgba(29, 78, 216, 0.4) !important;
+        background-image: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+        background-color: #dc2626 !important;
+        box-shadow: 0 4px 14px 0 rgba(220, 38, 38, 0.4) !important;
       }
 
-      /* Active States (Global) */
+      /* Active States (Global) - Light Red */
       [data-theme='marvel'] .bg-red-50 { 
-        background-color: #eff6ff !important; /* Blue-50 */
-        color: #1d4ed8 !important; /* Blue-700 */
-        border-color: #bfdbfe !important;
+        background-color: #fef2f2 !important; 
+        color: #dc2626 !important; 
+        border-color: #fca5a5 !important;
       }
 
       /* Text Colors */
@@ -143,15 +142,41 @@
         color: #dc2626 !important; /* Red-600 */
       }
       
-      /* Interest Tags */
-      [data-theme='marvel'] .rounded-full.bg-red-50 {
-        background-color: #fef2f2 !important; /* Red-50 */
-        color: #b91c1c !important; /* Red-700 */
-        border: 1px solid #fecaca !important;
+      /* --- SLIDER / MAP CONTROLS --- */
+      /* Light Blue Text & Light Red Slider */
+
+      /* Labels & Badges: Light Blue */
+      [data-theme='marvel'] .text-indigo-600,
+      [data-theme='marvel'] .text-indigo-500 {
+        color: #3b82f6 !important; /* Light Blue Text */
+      }
+      [data-theme='marvel'] .bg-indigo-50 {
+        background-color: #eff6ff !important; /* Very Light Blue BG */
+        color: #3b82f6 !important; /* Light Blue Text */
+        border-color: #bfdbfe !important;
+      }
+      [data-theme='marvel'] .bg-indigo-500 {
+        background-color: #3b82f6 !important; /* Light Blue active tick mark */
       }
 
-      /* Icons */
-      [data-theme='marvel'] svg.text-red-500 { color: #dc2626 !important; }
+      /* Slider Input: Light Red */
+      [data-theme='marvel'] .accent-indigo-600 {
+        accent-color: #ef4444 !important; /* Light Red Slider Thumb */
+      }
+      [data-theme='marvel'] input[type=range].bg-gray-200 {
+        background-color: #fee2e2 !important; /* Light Red Track */
+      }
+
+      /* Progress Bar Text (Home Screen) */
+      [data-theme='marvel'] .relative.h-6 .text-gray-800,
+      [data-theme='marvel'] .relative.h-6 .text-gray-900 {
+        color: #FFFFFF !important;
+        text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+      }
+      [data-theme='marvel'] .relative.h-6 .text-black\/20,
+      [data-theme='marvel'] .relative.h-6 .text-black\/30 {
+        color: rgba(255, 255, 255, 0.4) !important;
+      }
 
       /* Modals */
       [data-theme='marvel'] .bg-white.rounded-2xl {
