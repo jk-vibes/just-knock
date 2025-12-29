@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'just-knock-v1.1';
+const CACHE_NAME = 'just-knock-v1.3';
 const ASSETS_TO_CACHE = [
   './',
   'index.html',
@@ -15,8 +15,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Intentionally avoid failing the whole install if one asset fails
-      // This is more robust for dev/dynamic environments
+      // Robust caching: Log errors but continue if one fails
       return Promise.all(
         ASSETS_TO_CACHE.map(url => {
             return cache.add(url).catch(err => {
@@ -32,7 +31,6 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
-      // Clean up old caches
       caches.keys().then(cacheNames => {
         return Promise.all(
           cacheNames.map(cacheName => {
@@ -47,7 +45,19 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Simple cache-first strategy
+  // Navigation fallback for SPA/PWA
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      caches.match('index.html').then((response) => {
+        return response || fetch(event.request).catch(() => {
+           // Fallback to index.html for offline navigation
+           return caches.match('index.html');
+        });
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
@@ -55,21 +65,17 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
   const urlToOpen = event.notification.data?.url || './';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // 1. Try to find a matching window to focus
       for (const client of clientList) {
         if ('focus' in client) {
             return client.focus();
         }
       }
-      // 2. If no window, open a new one
       if (clients.openWindow) return clients.openWindow(urlToOpen);
     })
   );

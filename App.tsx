@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Radar, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag, ArrowUpDown, CalendarDays, ArrowDownAZ, ArrowUpAZ } from 'lucide-react';
+import { Plus, Radar, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag, ArrowUpDown, CalendarDays, ArrowDownAZ, ArrowUpAZ, Download } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -144,6 +144,32 @@ const BucketLogo = ({ onClickVersion, outlineColor }: { onClickVersion: () => vo
 );
 
 export default function App() {
+  // PWA Install State
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      console.log('App is installable');
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    installPrompt.userChoice.then((choiceResult: any) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the install prompt');
+        setInstallPrompt(null);
+      } else {
+        console.log('User dismissed the install prompt');
+      }
+    });
+  };
+
   // Auth State
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem(USER_KEY);
@@ -895,6 +921,16 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-2">
+              {installPrompt && (
+                <button
+                    onClick={handleInstallClick}
+                    className="p-2.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors animate-pulse"
+                    title="Install App"
+                >
+                    <Download className="w-5 h-5" />
+                </button>
+              )}
+
               <button 
                 data-tour="radar-btn"
                 onClick={() => {
@@ -987,237 +1023,4 @@ export default function App() {
                         )}
                         {filterInterest && (
                             <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-900/30">
-                                <Tag className="w-3.5 h-3.5 text-green-500" />
-                                <span className="text-xs font-bold text-green-900 dark:text-green-100">{filterInterest}</span>
-                                <button onClick={() => { setFilterInterest(null); triggerHaptic('light'); }} className="p-0.5 rounded-full hover:bg-green-100 dark:hover:bg-green-900/40 text-green-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {totalItems > 0 && activeTab === 'list' && !searchQuery && !filterCategory && !filterInterest && (
-                    <div className="px-1 mb-2 animate-in fade-in duration-500">
-                        <div className="relative h-6 rounded-full overflow-hidden shadow-inner border border-gray-100 dark:border-gray-600" style={{ backgroundColor: getPendingColor() }}>
-                            <div className="h-full transition-all duration-1000 ease-out flex items-center justify-end pr-2 relative overflow-hidden" style={{ width: `${progressMeter}%`, backgroundColor: getFillColor() }}>
-                                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                            </div>
-                            <div className="absolute inset-0 flex justify-between items-center px-3 text-[10px] font-extrabold uppercase tracking-widest z-10">
-                                <div className="flex items-center gap-1.5 text-gray-800 dark:text-gray-900 mix-blend-normal">
-                                    <Trophy className="w-3 h-3" />
-                                    <span>{completedGlobalCount} Done</span>
-                                </div>
-                                <span className="text-gray-800 dark:text-gray-900 opacity-90">{globalPendingCount} Dreaming</span>
-                            </div>
-                            <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
-                                <span className={`text-[9px] font-black drop-shadow-sm ${theme === 'batman' ? 'text-gray-300' : 'text-black/20 dark:text-black/30'}`}>{Math.round(progressMeter)}%</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex flex-wrap gap-2 justify-between items-center px-1 mb-2">
-                    <div className="flex items-center gap-2">
-                        <div data-tour="view-toggle" className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <button onClick={() => { setActiveTab('list'); triggerHaptic('light'); }} className={`p-1.5 rounded-md transition-all ${activeTab === 'list' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="List View"><List className="w-4 h-4" /></button>
-                            <button onClick={() => { setActiveTab('map'); triggerHaptic('light'); }} className={`p-1.5 rounded-md transition-all ${activeTab === 'map' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Map View"><MapIcon className="w-4 h-4" /></button>
-                            <div className="w-px bg-gray-100 dark:bg-gray-700 mx-0.5 my-1"></div>
-                            <button onClick={() => { setIsSearchOpen(!isSearchOpen); triggerHaptic('medium'); }} className={`p-1.5 rounded-md transition-all ${isSearchOpen || searchQuery ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Search"><Search className="w-4 h-4" /></button>
-                        </div>
-                    </div>
-
-                    {activeTab === 'list' && (
-                        <div className="flex gap-2 items-center">
-                            {familyMembers.length > 0 && (
-                                <div className="flex -space-x-2 mr-2 overflow-hidden bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
-                                    <button onClick={() => { setFilterOwner(null); triggerHaptic('light'); }} className={`relative z-30 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${!filterOwner ? 'bg-gray-800 text-white border-white dark:border-gray-600' : 'bg-gray-200 text-gray-500 border-white dark:border-gray-700 dark:bg-gray-700'}`} title="All"><Users className="w-3.5 h-3.5" /></button>
-                                    {familyMembers.map((member) => (
-                                        <button key={member} onClick={() => { setFilterOwner(member); triggerHaptic('light'); }} className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === member ? 'bg-blue-600 text-white border-blue-200 scale-110' : 'bg-blue-100 text-blue-600 border-white dark:border-gray-700'}`} title={member}>{getInitials(member)}</button>
-                                    ))}
-                                </div>
-                            )}
-
-                            <div className="bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm flex gap-0.5 relative">
-                                <button onClick={() => setIsSortMenuOpen(!isSortMenuOpen)} className={`px-2 py-1.5 rounded-md transition-all flex items-center justify-center ${isSortMenuOpen || sortBy !== 'newest' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Sort Items"><ArrowUpDown className="w-4 h-4" /></button>
-                                {isSortMenuOpen && (
-                                    <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 p-1">
-                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 py-2">Sort By</div>
-                                        {[
-                                            { id: 'newest', label: 'Newest First', icon: Clock },
-                                            { id: 'oldest', label: 'Oldest First', icon: Clock },
-                                            { id: 'az', label: 'Name (A-Z)', icon: ArrowDownAZ },
-                                            { id: 'za', label: 'Name (Z-A)', icon: ArrowUpAZ },
-                                            { id: 'completed_recent', label: 'Recently Done', icon: CalendarDays }
-                                        ].map((opt) => (
-                                            <button key={opt.id} onClick={() => { setSortBy(opt.id as SortOption); setIsSortMenuOpen(false); triggerHaptic('light'); }} className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${sortBy === opt.id ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}><opt.icon className="w-3.5 h-3.5" />{opt.label}{sortBy === opt.id && <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-orange-500" />}</button>
-                                        ))}
-                                    </div>
-                                )}
-                                <div className="w-px bg-gray-100 dark:bg-gray-700 mx-0.5 my-1"></div>
-                                <button onClick={() => { setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending'); triggerHaptic('light'); }} className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'pending' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="To Do"><Circle className="w-4 h-4" /></button>
-                                <button onClick={() => { setFilterStatus(filterStatus === 'completed' ? 'all' : 'completed'); triggerHaptic('light'); }} className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'completed' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Done"><CheckCircle2 className="w-4 h-4" /></button>
-                                <div className="w-px bg-gray-100 dark:bg-gray-700 mx-0.5 my-1"></div>
-                                <button onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }} className={`px-2 py-1.5 rounded-md transition-all flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300`} title="Toggle View"><LayoutList className="w-4 h-4" /></button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="pb-20 space-y-3">
-                    {activeTab === 'map' ? (
-                        <div className="animate-in fade-in zoom-in-95 duration-300">
-                            <MapView items={items} userLocation={userLocation} proximityRange={proximityRange} />
-                        </div>
-                    ) : (
-                        <>
-                            {filterStatus === 'completed' && sortedItems.length > 0 && (
-                                <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-                                    <TimelineView items={sortedItems} onEdit={handleEditClick} pendingCount={pendingCount} onViewPending={() => setFilterStatus('pending')} />
-                                </div>
-                            )}
-
-                            {filterStatus !== 'completed' && (
-                                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    {sortedItems.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
-                                            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-4">
-                                                {filterStatus === 'completed' ? <Trophy className="w-8 h-8 text-gray-400" /> : <LayoutList className="w-8 h-8 text-gray-400" />}
-                                            </div>
-                                            <p className="text-gray-500 dark:text-gray-400 font-medium">
-                                                {searchQuery || filterCategory || filterInterest ? 'No matching dreams found.' : 'Your list is empty. Start dreaming!'}
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        sortedItems.map(item => (
-                                            <BucketListCard 
-                                                key={item.id} 
-                                                item={item} 
-                                                userLocation={userLocation}
-                                                onToggleComplete={handleToggleComplete}
-                                                onDelete={handleDelete}
-                                                onEdit={handleEditClick}
-                                                onViewImages={setViewingItemImages}
-                                                onCategoryClick={handleCategoryClick}
-                                                onInterestClick={handleInterestClick}
-                                                onToggleItineraryItem={handleToggleItineraryItem}
-                                                onOpenPlanner={setPlanningItem}
-                                                isCompact={isCompact}
-                                                proximityRange={proximityRange}
-                                                theme={theme}
-                                            />
-                                        ))
-                                    )}
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            </div>
-        )}
-      </main>
-
-      {/* Floating Action Button with Animated Bucket */}
-      <button
-        data-tour="add-btn"
-        onClick={() => {
-            setEditingItem(null);
-            setIsAddModalOpen(true);
-            triggerHaptic('medium');
-        }}
-        className="fixed bottom-6 right-6 w-20 h-20 z-40 transition-transform hover:scale-110 active:scale-95 group filter drop-shadow-2xl"
-        title="Add Dream"
-      >
-        <div className="relative w-full h-full z-10 pointer-events-none">
-             <LiquidBucket 
-                text="" 
-                hideText={true}
-                className="w-full h-full"
-                fillPercent={Math.max(15, progressMeter)}
-                frontColor={fabTheme.front}
-                backColor={fabTheme.back}
-                backgroundColor={fabTheme.background}
-                outlineColor={fabTheme.outline}
-             />
-        </div>
-        {/* Plus Badge */}
-        <div className="absolute top-0 right-1 w-8 h-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-full flex items-center justify-center border-2 border-gray-100 dark:border-gray-700 shadow-sm z-20">
-            <Plus className="w-5 h-5 font-bold" strokeWidth={3} />
-        </div>
-      </button>
-
-      {/* MODALS */}
-      <AddItemModal
-        isOpen={isAddModalOpen}
-        onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }}
-        onAdd={handleAddItem}
-        categories={categories}
-        availableInterests={interests}
-        familyMembers={familyMembers}
-        initialData={editingItem ? {
-            title: editingItem.title,
-            description: editingItem.description,
-            locationName: editingItem.locationName,
-            latitude: editingItem.coordinates?.latitude,
-            longitude: editingItem.coordinates?.longitude,
-            images: editingItem.images,
-            category: editingItem.category,
-            interests: editingItem.interests,
-            owner: editingItem.owner,
-            isCompleted: editingItem.completed,
-            completedAt: editingItem.completedAt,
-            bestTimeToVisit: editingItem.bestTimeToVisit,
-            itinerary: editingItem.itinerary,
-            roadTrip: editingItem.roadTrip
-        } : null}
-        mode={editingItem ? 'edit' : 'add'}
-        items={items}
-        editingId={editingItem?.id}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        currentTheme={theme}
-        onThemeChange={setTheme}
-        onClearData={() => setItems([])}
-        onClearMockData={handleClearMockData}
-        onAddMockData={handleAddMockData}
-        categories={categories}
-        interests={interests}
-        familyMembers={familyMembers}
-        onAddCategory={(c) => setCategories(prev => [...prev, c])}
-        onRemoveCategory={(c) => setCategories(prev => prev.filter(cat => cat !== c))}
-        onAddInterest={(i) => setInterests(prev => [...prev, i])}
-        onRemoveInterest={(i) => setInterests(prev => prev.filter(int => int !== i))}
-        onAddFamilyMember={(m) => setFamilyMembers(prev => [...prev, m])}
-        onRemoveFamilyMember={(m) => setFamilyMembers(prev => prev.filter(mem => mem !== m))}
-        onLogout={() => setUser(null)}
-        items={items}
-        onRestore={handleRestoreData}
-        proximityRange={proximityRange}
-        onProximityRangeChange={setProximityRange}
-        onRestartTour={() => {
-            setIsSettingsOpen(false);
-            setShowOnboarding(true);
-        }}
-        onReauth={handleGoogleReauth}
-      />
-
-      <ChangelogModal isOpen={isChangelogOpen} onClose={() => setIsChangelogOpen(false)} />
-      <ImageGalleryModal item={viewingItemImages} onClose={() => setViewingItemImages(null)} />
-      <NotificationsModal 
-          isOpen={isNotificationsOpen} 
-          onClose={() => setIsNotificationsOpen(false)} 
-          notifications={notifications}
-          onMarkAllRead={handleMarkAllNotificationsRead}
-          onClearAll={handleClearNotifications}
-      />
-      <CompleteDateModal 
-          isOpen={!!completingItem} 
-          onClose={() => setCompletingItem(null)} 
-          onConfirm={handleConfirmCompletion} 
-          itemTitle={completingItem?.title}
-      />
-
-    </div>
-  );
-}
+                                <Tag className="w-3.5
