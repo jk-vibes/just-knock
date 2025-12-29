@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as L from 'leaflet';
-import { ArrowLeft, MapPin, Route, Navigation, Plus, Trash2, Save, Map as MapIcon, List as ListIcon, Sparkles, Loader2, Clock, Footprints, CheckCircle2, RefreshCw, Star, Info, X, ExternalLink, Image as ImageIcon, Car, Flag, Zap } from 'lucide-react';
+import { ArrowLeft, MapPin, Route, Navigation, Plus, Trash2, Save, Map as MapIcon, List as ListIcon, Sparkles, Loader2, Clock, Footprints, CheckCircle2, RefreshCw, Star, Info, X, ExternalLink, Image as ImageIcon, Car, Flag, Zap, Square, CheckSquare } from 'lucide-react';
 import { BucketItem, Coordinates, ItineraryItem, RoadTripDetails } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 import { getPlaceDetails, generateItineraryForLocation, generateRoadTripStops, reverseGeocode, optimizeRouteOrder } from '../services/geminiService';
@@ -10,10 +10,11 @@ interface TripPlannerProps {
   item: BucketItem | null;
   onClose: () => void;
   onUpdateItem: (updatedItem: BucketItem) => void;
+  onAddSeparateItem: (item: BucketItem) => void;
   userLocation?: Coordinates | null;
 }
 
-export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdateItem, userLocation }) => {
+export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdateItem, onAddSeparateItem, userLocation }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   
@@ -237,6 +238,45 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
           if (item) updateRoadTripData(startLocationName, startCoordinates, updated);
       }
       setIsSaved(false);
+  };
+
+  // Toggle completion of a stop and optionally add to global bucket list
+  const handleToggleStop = (index: number) => {
+      if (!item) return;
+
+      const targetList = plannerMode === 'destination' ? [...currentItinerary] : [...roadTripStops];
+      const stop = targetList[index];
+      const isNowCompleted = !stop.completed;
+      
+      // Update local state
+      stop.completed = isNowCompleted;
+      
+      if (plannerMode === 'destination') {
+          setCurrentItinerary(targetList);
+          onUpdateItem({ ...item, itinerary: targetList });
+      } else {
+          setRoadTripStops(targetList);
+          updateRoadTripData(startLocationName, startCoordinates, targetList);
+      }
+
+      // If marked as done, create a separate completed bucket item
+      if (isNowCompleted) {
+          const newCompletedItem: BucketItem = {
+              id: crypto.randomUUID(),
+              title: stop.name,
+              description: `Visited ${stop.name} during trip to ${item.locationName || 'destination'}. ${stop.description || ''}`,
+              locationName: item.locationName, // Context location usually better than just "Eiffel Tower" which implies Paris
+              coordinates: stop.coordinates,
+              completed: true,
+              completedAt: Date.now(),
+              createdAt: Date.now(),
+              images: stop.images,
+              category: item.category || 'Travel',
+              interests: item.interests,
+              owner: item.owner
+          };
+          onAddSeparateItem(newCompletedItem);
+      }
   };
 
   // Route with Details (Coordinates + Distance calculation respecting CURRENT order)
@@ -766,12 +806,20 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                                 onClick={() => setSelectedStop(stop)}
                                 className={`flex items-center gap-3 p-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border rounded-xl shadow-sm group transition-all cursor-pointer hover:bg-green-50 dark:hover:bg-gray-700/50 ${stop.isImportant ? 'border-yellow-200 dark:border-yellow-900/30 ring-1 ring-yellow-100 dark:ring-yellow-900/10' : 'border-gray-200 dark:border-gray-700'}`}
                             >
+                                {/* Checkbox for Done Status */}
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleToggleStop(stop.originalIndex); }}
+                                    className={`shrink-0 transition-colors ${stop.completed ? 'text-green-600 dark:text-green-400' : 'text-gray-300 dark:text-gray-600 hover:text-green-500'}`}
+                                >
+                                    {stop.completed ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                                </button>
+
                                 <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold shrink-0 ${plannerMode === 'roadtrip' ? 'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400' : (stop.isImportant ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400')}`}>
                                     {idx + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1.5">
-                                        <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{stop.name}</h4>
+                                        <h4 className={`text-sm font-semibold truncate ${stop.completed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-200'}`}>{stop.name}</h4>
                                         {stop.isImportant && (
                                             <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500 shrink-0" title="Must Visit" />
                                         )}

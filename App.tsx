@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Radar, ListChecks, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag } from 'lucide-react';
+import { Plus, Radar, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag, ArrowUpDown, CalendarDays, ArrowDownAZ, ArrowUpAZ } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -11,7 +11,7 @@ import { CompleteDateModal } from './components/CompleteDateModal';
 import { ChangelogModal } from './components/ChangelogModal';
 import { ImageGalleryModal } from './components/ImageGalleryModal';
 import { NotificationsModal } from './components/NotificationsModal';
-import { TripPlanner } from './components/ItineraryRouteModal'; // Using renamed component from existing file path
+import { TripPlanner } from './components/ItineraryRouteModal';
 import { OnboardingTour } from './components/OnboardingTour';
 import { BucketItem, BucketItemDraft, Coordinates, Theme, User, AppNotification } from './types';
 import { calculateDistance, requestNotificationPermission, sendNotification, formatDistance, speak, getDistanceSpeech } from './utils/geo';
@@ -36,6 +36,9 @@ const DEFAULT_INTERESTS = ['Hiking', 'Photography', 'History', 'Art', 'Beach', '
 const DEFAULT_PROXIMITY = 2000; // 2km in meters
 const DEFAULT_CLIENT_ID = '482285261060-fe5mujd6kn3gos3k6kgoj0kjl63u0cr1.apps.googleusercontent.com';
 
+// Sorting Options
+type SortOption = 'newest' | 'oldest' | 'az' | 'za' | 'completed_recent';
+
 // --- LIQUID BUCKET COMPONENT ---
 const LiquidBucket = ({ 
     text, 
@@ -43,6 +46,7 @@ const LiquidBucket = ({
     hideText = false,
     frontColor,
     backColor,
+    backgroundColor, // New: Color for the empty/pending part
     outlineColor,
     fillPercent = 50
 }: { 
@@ -51,6 +55,7 @@ const LiquidBucket = ({
     hideText?: boolean,
     frontColor?: string,
     backColor?: string,
+    backgroundColor?: string,
     outlineColor?: string,
     fillPercent?: number
 }) => {
@@ -59,8 +64,6 @@ const LiquidBucket = ({
     
     // Calculate water level Y coordinate
     // Top of bucket ~160, Bottom ~480. Height ~320.
-    // 100% -> 160
-    // 0% -> 480
     const yBase = 480 - (safePercent * 3.2);
     const amp = 15; // Wave amplitude
 
@@ -80,7 +83,7 @@ const LiquidBucket = ({
     return (
         <svg viewBox="0 0 512 512" className={`${className} filter drop-shadow-sm transition-transform hover:scale-110 duration-300`}>
             <defs>
-                <clipPath id={`bucket-clip-${text}`}>
+                <clipPath id={`bucket-clip-${text || 'icon'}`}>
                      <path d="M56 160l40 320h320l40-320Z" />
                 </clipPath>
             </defs>
@@ -88,19 +91,22 @@ const LiquidBucket = ({
             {/* Handle */}
             <path d="M56 160c0-100 400-100 400 0" stroke={outlineColor || "currentColor"} strokeWidth="30" strokeLinecap="round" fill="none" />
             
-            {/* Liquid Group */}
-            <g clipPath={`url(#bucket-clip-${text})`}>
-                 {/* Back Wave */}
-                 <path fill={backColor || "currentColor"} opacity="0.6">
+            {/* Body Group */}
+            <g clipPath={`url(#bucket-clip-${text || 'icon'})`}>
+                 {/* Background (Pending) */}
+                 <rect x="0" y="0" width="512" height="512" fill={backgroundColor || "transparent"} />
+
+                 {/* Back Wave (Completed) */}
+                 <path fill={backColor || "currentColor"} opacity="0.8">
                       <animate attributeName="d" dur="3s" repeatCount="indefinite" values={backWaveValues} />
                  </path>
-                 {/* Front Wave */}
-                 <path fill={frontColor || "currentColor"} opacity="0.9">
+                 {/* Front Wave (Completed) */}
+                 <path fill={frontColor || "currentColor"} opacity="1">
                       <animate attributeName="d" dur="2s" repeatCount="indefinite" values={frontWaveValues} />
                  </path>
             </g>
     
-            {/* Body Outline (drawn over liquid to keep crisp edges) */}
+            {/* Body Outline */}
             <path d="M56 160l40 320h320l40-320Z" stroke={outlineColor || "currentColor"} strokeWidth="30" strokeLinejoin="round" fill="none" />
             
             {/* Text */}
@@ -113,7 +119,7 @@ const LiquidBucket = ({
     );
 };
 
-// Custom Bucket Logo Component - JK Design with Text
+// Custom Bucket Logo Component
 const BucketLogo = ({ onClickVersion, outlineColor }: { onClickVersion: () => void, outlineColor: string }) => (
     <div className="flex flex-col items-start justify-center">
         <div className="flex items-center gap-2">
@@ -165,9 +171,7 @@ export default function App() {
   // App State
   const [items, setItems] = useState<BucketItem[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    // Initialize with mock data if empty
     if (!saved) {
-      // Use generator to get massive dataset
       return generateMockItems();
     }
     return JSON.parse(saved);
@@ -194,13 +198,15 @@ export default function App() {
     return (localStorage.getItem(THEME_KEY) as Theme) || 'system';
   });
   
+  // Sorting State
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  
   // Onboarding Tour State
   const [showOnboarding, setShowOnboarding] = useState(false);
   
-  // Google Auth Client Ref for Re-authentication
   const tokenClient = useRef<any>(null);
 
-  // Initialize Google Token Client on Mount (if user exists) to allow re-auth
   useEffect(() => {
     if (user && !tokenClient.current) {
         const initClient = () => {
@@ -213,7 +219,6 @@ export default function App() {
                         callback: (tokenResponse: any) => {
                             if (tokenResponse.access_token) {
                                 driveService.setAccessToken(tokenResponse.access_token);
-                                console.log("Token refreshed successfully");
                             }
                         },
                     });
@@ -223,7 +228,6 @@ export default function App() {
             }
         };
         
-        // Wait for script to load
         if (window.google) {
             initClient();
         } else {
@@ -238,42 +242,32 @@ export default function App() {
     }
   }, [user]);
 
-  // Function to handle re-authentication
   const handleGoogleReauth = useCallback((): Promise<void> => {
       return new Promise((resolve, reject) => {
           if (!tokenClient.current) {
-              alert("Google Sign-In not initialized. Please reload.");
               return reject("Not initialized");
           }
-          
-          // Override callback for this specific request to resolve the promise
           tokenClient.current.callback = (resp: any) => {
-              if (resp.error) {
-                  reject(resp.error);
-              } else if (resp.access_token) {
+              if (resp.error) reject(resp.error);
+              else if (resp.access_token) {
                   driveService.setAccessToken(resp.access_token);
                   resolve();
               }
           };
-          
-          // Request token (triggers popup if needed, or silent if possible)
           tokenClient.current.requestAccessToken({ prompt: '' });
       });
   }, []);
 
-  // Check onboarding status on mount or login
   useEffect(() => {
       if (user) {
           const hasCompleted = localStorage.getItem(ONBOARDING_KEY);
           if (!hasCompleted) {
-              // Short delay to allow UI to settle
               const timer = setTimeout(() => setShowOnboarding(true), 1000);
               return () => clearTimeout(timer);
           }
       }
   }, [user]);
 
-  // System Theme Tracking
   const [isSystemDark, setIsSystemDark] = useState(() => 
     window.matchMedia('(prefers-color-scheme: dark)').matches
   );
@@ -285,15 +279,13 @@ export default function App() {
     return () => media.removeEventListener('change', listener);
   }, []);
 
-  // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
-  const [filterOwner, setFilterOwner] = useState<string | null>(null); // null = All
+  const [filterOwner, setFilterOwner] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterInterest, setFilterInterest] = useState<string | null>(null);
   const [isCompact, setIsCompact] = useState(false);
 
-  // Edit/Action State
   const [editingItem, setEditingItem] = useState<BucketItem | null>(null);
   const [completingItem, setCompletingItem] = useState<BucketItem | null>(null);
   const [activeToast, setActiveToast] = useState<{
@@ -302,14 +294,10 @@ export default function App() {
       action?: { label: string; onClick: () => void };
   } | null>(null);
 
-  // Keep track of notified items to avoid spamming
   const notifiedItems = useRef<Set<string>>(new Set());
-  
-  // Refs for watcher to access latest state without restarting
   const itemsRef = useRef(items);
   const proximityRangeRef = useRef(proximityRange);
 
-  // Persistence Effects
   useEffect(() => {
     if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
     else localStorage.removeItem(USER_KEY);
@@ -341,16 +329,12 @@ export default function App() {
       localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
   }, [notifications]);
 
-  // Apply Theme and Meta Theme Color
   useEffect(() => {
     const root = window.document.documentElement;
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    
-    // Clear previous theme attributes
     root.removeAttribute('data-theme');
     
     const applyTheme = (t: Theme) => {
-      // Handle standard dark/light classes
       const isDark = t === 'dark' || t === 'batman' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       if (isDark) {
         root.classList.add('dark');
@@ -358,15 +342,12 @@ export default function App() {
         root.classList.remove('dark');
       }
 
-      // Handle Special Character Themes via data-attribute and Status Bar Color
       if (['marvel', 'batman', 'elsa'].includes(t)) {
           root.setAttribute('data-theme', t);
-          
-          if (t === 'marvel' && metaThemeColor) metaThemeColor.setAttribute('content', '#1e3a8a'); // Blue
-          if (t === 'batman' && metaThemeColor) metaThemeColor.setAttribute('content', '#000000'); // Black
-          if (t === 'elsa' && metaThemeColor) metaThemeColor.setAttribute('content', '#ecfeff'); // Cyan 50
+          if (t === 'marvel' && metaThemeColor) metaThemeColor.setAttribute('content', '#1e3a8a');
+          if (t === 'batman' && metaThemeColor) metaThemeColor.setAttribute('content', '#000000');
+          if (t === 'elsa' && metaThemeColor) metaThemeColor.setAttribute('content', '#ecfeff');
       } else {
-          // Default Red for Light/Dark
           if (metaThemeColor) metaThemeColor.setAttribute('content', isDark ? '#111827' : '#ef4444');
       }
     };
@@ -382,7 +363,6 @@ export default function App() {
     }
   }, [theme]);
 
-  // Helper to Add Notification to State
   const addAppNotification = useCallback((title: string, message: string, type: 'location' | 'system' | 'info' = 'system', relatedItemId?: string) => {
       const newNotif: AppNotification = {
           id: crypto.randomUUID(),
@@ -393,10 +373,9 @@ export default function App() {
           type,
           relatedItemId
       };
-      setNotifications(prev => [newNotif, ...prev].slice(0, 50)); // Keep last 50
+      setNotifications(prev => [newNotif, ...prev].slice(0, 50));
   }, []);
 
-  // Scheduled Reminders
   useEffect(() => {
     const checkScheduledReminders = () => {
         const now = new Date();
@@ -435,41 +414,28 @@ export default function App() {
 
     const interval = setInterval(checkScheduledReminders, 60000);
     checkScheduledReminders();
-
     return () => clearInterval(interval);
   }, [items, addAppNotification]);
 
-  // Auto-Backup Service (Every 24h)
   useEffect(() => {
       const runAutoBackup = async () => {
-          if (!user) return;
-          // Only perform backup if access token is available
-          if (!driveService.getAccessToken()) return;
-
+          if (!user || !driveService.getAccessToken()) return;
           const lastBackupStr = driveService.getLastBackupTime();
           const now = Date.now();
           const HOURS_24 = 24 * 60 * 60 * 1000;
-
           const shouldBackup = !lastBackupStr || (now - new Date(lastBackupStr).getTime() > HOURS_24);
 
           if (shouldBackup && items.length > 0) {
-              // Perform silent backup
               await driveService.backup(items, true); 
           }
       };
-
-      // Run immediately on mount/update
       runAutoBackup();
-
-      // Check every hour to catch the 24h window if app stays open
       const interval = setInterval(runAutoBackup, 60 * 60 * 1000);
       return () => clearInterval(interval);
   }, [user, items]);
 
-  // Optimized Geolocation Watcher
   useEffect(() => {
     let watchId: number | null = null;
-
     if (isRadarOn) {
       setLocating(true);
       requestNotificationPermission().then((granted) => {
@@ -490,8 +456,6 @@ export default function App() {
               setUserLocation(newLocation);
               setLocating(false);
               
-              // Check proximity inside the watcher using refs
-              // This prevents restarting the watcher when items or settings change
               const currentItems = itemsRef.current;
               const range = proximityRangeRef.current;
               
@@ -503,18 +467,11 @@ export default function App() {
                     const title = `Nearby: ${item.title}`;
                     const body = `${item.description}\nDistance: ${formatDistance(dist)}`;
                     
-                    // 1. System Notification
                     sendNotification(title, body, `jk-item-${item.id}`);
-                    
-                    // 2. Audio Notification (TTS)
                     const distSpeech = getDistanceSpeech(dist);
                     const audioText = `Knock Knock! You are nearby ${item.title}. It is ${distSpeech} away. ${item.description}`;
                     speak(audioText);
-                    
-                    // 3. Add to History
                     addAppNotification(title, body, 'location', item.id);
-
-                    // 4. In-App Toast
                     setActiveToast({
                         title: title,
                         message: `${formatDistance(dist)} away - ${item.locationName || 'Check it out!'}`
@@ -544,11 +501,10 @@ export default function App() {
       setLocating(false);
       notifiedItems.current.clear();
     }
-
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [isRadarOn, addAppNotification]); // Minimal dependencies to ensure watcher stability
+  }, [isRadarOn, addAppNotification]);
 
   const handleAddItem = (draft: BucketItemDraft) => {
     triggerHaptic('success');
@@ -563,14 +519,12 @@ export default function App() {
                 category: draft.category,
                 interests: draft.interests,
                 owner: draft.owner,
-                images: draft.images || item.images, // Preserve new images or keep old
-                // Update completion status and date if changed
+                images: draft.images || item.images,
                 completed: draft.isCompleted !== undefined ? draft.isCompleted : item.completed,
                 completedAt: draft.isCompleted ? draft.completedAt : (draft.isCompleted === false ? undefined : item.completedAt),
                 bestTimeToVisit: draft.bestTimeToVisit,
-                // itinerary is preserved or updated
                 itinerary: draft.itinerary,
-                roadTrip: draft.roadTrip // Preserve or update
+                roadTrip: draft.roadTrip
             } : item
         ));
         setEditingItem(null);
@@ -600,6 +554,16 @@ export default function App() {
     setIsAddModalOpen(false);
   };
 
+  const handleAddSeparateItem = (newItem: BucketItem) => {
+      setItems(prev => [newItem, ...prev]);
+      triggerHaptic('success');
+      setActiveToast({
+          title: "Memory Saved!",
+          message: `${newItem.title} added to your completed dreams.`
+      });
+      setTimeout(() => setActiveToast(null), 3000);
+  };
+
   const handleEditClick = (item: BucketItem) => {
       triggerHaptic('medium');
       setEditingItem(item);
@@ -611,7 +575,6 @@ export default function App() {
     if (!item) return;
 
     if (item.completed) {
-        // If already completed, toggle off immediately
         triggerHaptic('medium');
         setItems(prev => prev.map(i => i.id === id ? { 
             ...i, 
@@ -619,7 +582,6 @@ export default function App() {
             completedAt: undefined 
         } : i));
     } else {
-        // If incomplete, open date picker modal
         triggerHaptic('light');
         setCompletingItem(item);
     }
@@ -636,7 +598,6 @@ export default function App() {
       setCompletingItem(null);
   };
 
-  // Deprecated usage but kept for compatibility just in case
   const handleToggleItineraryItem = (itemId: string, index: number) => {
       setItems(prev => prev.map(item => {
           if (item.id !== itemId || !item.itinerary) return item;
@@ -650,10 +611,8 @@ export default function App() {
       triggerHaptic('light');
   };
 
-  // Handler for Trip Planner Modal to update item
   const handleUpdateItem = (updatedItem: BucketItem) => {
       setItems(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
-      // Also update the local state of planningItem so UI reflects changes immediately if re-opened or kept open
       if (planningItem && planningItem.id === updatedItem.id) {
           setPlanningItem(updatedItem);
       }
@@ -661,7 +620,6 @@ export default function App() {
 
   const handleDelete = (id: string) => {
     triggerHaptic('warning');
-    // REMOVE CONFIRM for smoother swipe experience, rely on UNDO Toast
     const itemToDelete = items.find(i => i.id === id);
     setItems(prev => prev.filter(item => item.id !== id));
     
@@ -693,16 +651,13 @@ export default function App() {
   const handleAddMockData = () => {
       triggerHaptic('success');
       const mockItems = generateMockItems();
-      
       setItems(prev => {
           const existingIds = new Set(prev.map(i => i.id));
           const newMocks = mockItems.filter(i => !existingIds.has(i.id));
-          
           if (newMocks.length === 0) {
               alert("No new mock items added. You might already have them all.");
               return prev;
           }
-          
           alert(`Added ${newMocks.length} mock wishes to your list!`);
           return [...prev, ...newMocks];
       });
@@ -728,22 +683,13 @@ export default function App() {
   };
 
   const handleCategoryClick = (category: string) => {
-      if (filterCategory === category) {
-          setFilterCategory(null);
-      } else {
-          setFilterCategory(category);
-      }
+      setFilterCategory(prev => prev === category ? null : category);
       triggerHaptic('light');
-      // If we are in Map view, switch to list to see filtered results clearly
       if (activeTab === 'map') setActiveTab('list');
   };
 
   const handleInterestClick = (interest: string) => {
-      if (filterInterest === interest) {
-          setFilterInterest(null);
-      } else {
-          setFilterInterest(interest);
-      }
+      setFilterInterest(prev => prev === interest ? null : interest);
       triggerHaptic('light');
       if (activeTab === 'map') setActiveTab('list');
   };
@@ -752,11 +698,8 @@ export default function App() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
-  // Calculate pending count for the current owner/filter scope
   const pendingCount = items.filter(item => {
     if (item.completed) return false;
-    
-    // Respect Owner filter
     if (filterOwner) {
         if (filterOwner === 'Me') {
             if (item.owner && item.owner !== 'Me') return false;
@@ -767,78 +710,67 @@ export default function App() {
     return true;
   }).length;
 
-  // Calculate Fill Percentage (Pending / Total)
   const totalItems = items.length;
   const globalPendingCount = items.filter(i => !i.completed).length;
   const completedGlobalCount = totalItems - globalPendingCount;
-  const fillPercentage = totalItems > 0 ? (globalPendingCount / totalItems) * 100 : 0;
-  
-  // Progress Meter Calculation (0-100)
   const progressMeter = totalItems > 0 ? (completedGlobalCount / totalItems) * 100 : 0;
 
-  // Notification Badge Count
   const unreadNotifications = notifications.filter(n => !n.read).length;
 
-  // Determine fill color (Done items) based on theme
-  const getFillColor = () => {
-      if (theme === 'batman') return '#fbbf24'; // amber-400
-      if (theme === 'elsa') return '#06b6d4'; // cyan-500
-      return '#86efac'; // requested Light Green for default (#4ade80 also good, but 86efac is lighter)
-  };
-
-  // Determine background color (Pending items) based on theme
-  const getPendingColor = () => {
-      if (theme === 'batman') return '#374151'; // gray-700
-      if (theme === 'elsa') return '#cffafe'; // cyan-100
-      return '#fca5a5'; // requested Light Red for default
-  };
-
-  // Determine FAB Colors based on Theme
   const getFABTheme = (currentTheme: Theme) => {
     switch (currentTheme) {
         case 'marvel':
             return { 
-                outline: '#1e3a8a', // Dark Blue
-                front: '#dc2626',   // Red Water
-                back: '#ef4444', 
-                badgeBorder: '#1e3a8a',
-                badgeText: '#1e3a8a',
-                badgeBg: '#ffffff'
+                outline: '#1e3a8a', 
+                front: '#dc2626',   
+                back: '#991b1b',    
+                background: '#eff6ff' 
             }; 
         case 'batman':
             return { 
-                outline: '#f59e0b', // Yellow
-                front: '#374151',   // Dark Grey (Gray-700)
-                back: '#4b5563',    // Gray-600
-                badgeBorder: '#f59e0b',
-                badgeText: '#000000',
-                badgeBg: '#f59e0b'
+                outline: '#fbbf24', 
+                front: '#f59e0b',   
+                back: '#b45309',    
+                background: '#1f2937' 
             }; 
         case 'elsa':
             return { 
-                outline: '#06b6d4', // Cyan
-                front: '#67e8f9',   // Light Cyan Water
-                back: '#a5f3fc',
-                badgeBorder: '#06b6d4',
-                badgeText: '#06b6d4',
-                badgeBg: '#ffffff'
+                outline: '#0e7490', 
+                front: '#22d3ee',   
+                back: '#0891b2',    
+                background: '#ecfeff' 
             }; 
         default:
             return { 
-                outline: '#ef4444', 
-                front: '#ff4d4d', 
-                back: '#fca5a5',
-                badgeBorder: '#fee2e2',
-                badgeText: '#ef4444',
-                badgeBg: '#ffffff'
+                outline: '#374151', 
+                front: '#22c55e',   
+                back: '#15803d',    
+                background: '#3b82f6' 
             }; 
     }
+  };
+
+  const getPendingColor = () => {
+      switch (theme) {
+          case 'batman': return '#1f2937'; // gray-800
+          case 'marvel': return '#1e3a8a'; // blue-900
+          case 'elsa': return '#cffafe'; // cyan-100
+          default: return '#e2e8f0'; // slate-200
+      }
+  };
+
+  const getFillColor = () => {
+      switch (theme) {
+          case 'batman': return '#f59e0b'; // amber-500
+          case 'marvel': return '#dc2626'; // red-600
+          case 'elsa': return '#06b6d4'; // cyan-500
+          default: return '#22c55e'; // green-500
+      }
   };
 
   const fabTheme = getFABTheme(theme);
 
   const filteredItems = items.filter(item => {
-    // 1. Search Filter (Global)
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesSearch = (
@@ -850,12 +782,8 @@ export default function App() {
         );
         if (!matchesSearch) return false;
     }
-
-    // 2. Status Filter
     if (filterStatus === 'pending' && item.completed) return false;
     if (filterStatus === 'completed' && !item.completed) return false;
-    
-    // 3. Owner Filter
     if (filterOwner) {
         if (filterOwner === 'Me') {
             if (item.owner && item.owner !== 'Me') return false;
@@ -863,16 +791,24 @@ export default function App() {
             if (item.owner !== filterOwner) return false;
         }
     }
-
-    // 4. Category Filter
     if (filterCategory && item.category !== filterCategory) return false;
-
-    // 5. Interest Filter
-    if (filterInterest) {
-        if (!item.interests || !item.interests.includes(filterInterest)) return false;
-    }
-    
+    if (filterInterest && (!item.interests || !item.interests.includes(filterInterest))) return false;
     return true;
+  });
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+      switch (sortBy) {
+          case 'newest': return (b.createdAt || 0) - (a.createdAt || 0);
+          case 'oldest': return (a.createdAt || 0) - (b.createdAt || 0);
+          case 'az': return a.title.localeCompare(b.title);
+          case 'za': return b.title.localeCompare(a.title);
+          case 'completed_recent': 
+              if (!a.completedAt && !b.completedAt) return 0;
+              if (!a.completedAt) return 1;
+              if (!b.completedAt) return -1;
+              return b.completedAt - a.completedAt;
+          default: return 0;
+      }
   });
 
   if (!user) {
@@ -905,8 +841,6 @@ export default function App() {
 
   return (
     <div className="h-screen overflow-hidden bg-[#f8fafc] dark:bg-gray-900 transition-colors duration-300 flex flex-col relative">
-      
-      {/* Onboarding Tour */}
       <OnboardingTour 
         isActive={showOnboarding}
         onComplete={() => {
@@ -914,8 +848,6 @@ export default function App() {
             localStorage.setItem(ONBOARDING_KEY, 'true');
         }}
       />
-
-      {/* In-App Notification Toast */}
       {activeToast && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm animate-in slide-in-from-top-4 fade-in duration-300">
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 border border-red-100 dark:border-red-900/30 flex items-center gap-4">
@@ -944,7 +876,6 @@ export default function App() {
           </div>
       )}
 
-      {/* Header - Added padding-top for Safe Area Insets (Notch) */}
       <header className="flex-none z-30 border-b border-red-100/50 dark:border-gray-800 shadow-sm backdrop-blur-md bg-white/90 dark:bg-gray-900/90 transition-colors duration-300 pt-[env(safe-area-inset-top)]">
         <div className="max-w-2xl mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
@@ -962,14 +893,8 @@ export default function App() {
                 className={`relative p-2.5 rounded-full transition-all duration-300 ${isRadarOn ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                 title="Toggle Location Radar"
               >
-                {locating ? (
-                  <Loader className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Radar className={`w-5 h-5 ${isRadarOn ? 'animate-pulse' : ''}`} />
-                )}
-                {isRadarOn && (
-                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></span>
-                )}
+                {locating ? <Loader className="w-5 h-5 animate-spin" /> : <Radar className={`w-5 h-5 ${isRadarOn ? 'animate-pulse' : ''}`} />}
+                {isRadarOn && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></span>}
               </button>
 
               <button
@@ -984,7 +909,6 @@ export default function App() {
                 <Settings className="w-5 h-5" />
               </button>
 
-              {/* Notification Bell */}
               <button
                 onClick={() => {
                     setIsNotificationsOpen(true);
@@ -1009,15 +933,9 @@ export default function App() {
                     }
                 }}
                 className="p-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center justify-center overflow-hidden"
-                title={`Sign Out ${user?.name}`}
               >
                 {user?.photoUrl ? (
-                    <img 
-                        src={user.photoUrl} 
-                        alt="Profile" 
-                        referrerPolicy="no-referrer"
-                        className="w-8 h-8 rounded-full object-cover"
-                    />
+                    <img src={user.photoUrl} alt="Profile" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full object-cover"/>
                 ) : (
                     <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 font-bold text-[10px]">
                         {user?.name ? getInitials(user.name) : <Users className="w-4 h-4" />}
@@ -1029,95 +947,56 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-grow flex flex-col overflow-hidden w-full pb-[env(safe-area-inset-bottom)]">
         {planningItem ? (
             <TripPlanner 
                 item={planningItem} 
                 onClose={() => setPlanningItem(null)} 
                 onUpdateItem={handleUpdateItem}
+                onAddSeparateItem={handleAddSeparateItem}
                 userLocation={userLocation}
             />
         ) : (
             <div className="max-w-2xl mx-auto px-4 py-2 space-y-2 w-full overflow-y-auto no-scrollbar h-full">
-                {/* Active Filters Bar */}
                 {(searchQuery || filterCategory || filterInterest) && (
                     <div className="px-1 mb-2 animate-in fade-in slide-in-from-top-2 flex flex-wrap gap-2">
                         {searchQuery && (
                             <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-full border border-red-100 dark:border-red-900/30">
                                 <Search className="w-3.5 h-3.5 text-red-500" />
-                                <span className="text-xs font-bold text-red-900 dark:text-red-100 max-w-[150px] truncate">
-                                    "{searchQuery}"
-                                </span>
-                                <button 
-                                    onClick={() => { setSearchQuery(''); triggerHaptic('light'); }}
-                                    className="p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 transition-colors"
-                                >
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
+                                <span className="text-xs font-bold text-red-900 dark:text-red-100 max-w-[150px] truncate">"{searchQuery}"</span>
+                                <button onClick={() => { setSearchQuery(''); triggerHaptic('light'); }} className="p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
                             </div>
                         )}
-
                         {filterCategory && (
                             <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900/30">
                                 <CategoryIcon category={filterCategory} className="w-3.5 h-3.5 text-blue-500" />
-                                <span className="text-xs font-bold text-blue-900 dark:text-blue-100">
-                                    {filterCategory}
-                                </span>
-                                <button 
-                                    onClick={() => { setFilterCategory(null); triggerHaptic('light'); }}
-                                    className="p-0.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-500 transition-colors"
-                                >
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
+                                <span className="text-xs font-bold text-blue-900 dark:text-blue-100">{filterCategory}</span>
+                                <button onClick={() => { setFilterCategory(null); triggerHaptic('light'); }} className="p-0.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
                             </div>
                         )}
-
                         {filterInterest && (
                             <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-900/30">
                                 <Tag className="w-3.5 h-3.5 text-green-500" />
-                                <span className="text-xs font-bold text-green-900 dark:text-green-100">
-                                    {filterInterest}
-                                </span>
-                                <button 
-                                    onClick={() => { setFilterInterest(null); triggerHaptic('light'); }}
-                                    className="p-0.5 rounded-full hover:bg-green-100 dark:hover:bg-green-900/40 text-green-500 transition-colors"
-                                >
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
+                                <span className="text-xs font-bold text-green-900 dark:text-green-100">{filterInterest}</span>
+                                <button onClick={() => { setFilterInterest(null); triggerHaptic('light'); }} className="p-0.5 rounded-full hover:bg-green-100 dark:hover:bg-green-900/40 text-green-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Progress Meter / Slider */}
                 {totalItems > 0 && activeTab === 'list' && !searchQuery && !filterCategory && !filterInterest && (
                     <div className="px-1 mb-2 animate-in fade-in duration-500">
-                        <div 
-                            className="relative h-6 rounded-full overflow-hidden shadow-inner border border-gray-100 dark:border-gray-600"
-                            style={{ backgroundColor: getPendingColor() }}
-                        >
-                            {/* The Fill */}
-                            <div
-                                className="h-full transition-all duration-1000 ease-out flex items-center justify-end pr-2 relative overflow-hidden"
-                                style={{
-                                    width: `${progressMeter}%`,
-                                    backgroundColor: getFillColor()
-                                }}
-                            >
+                        <div className="relative h-6 rounded-full overflow-hidden shadow-inner border border-gray-100 dark:border-gray-600" style={{ backgroundColor: getPendingColor() }}>
+                            <div className="h-full transition-all duration-1000 ease-out flex items-center justify-end pr-2 relative overflow-hidden" style={{ width: `${progressMeter}%`, backgroundColor: getFillColor() }}>
                                 <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
                             </div>
-                            {/* Text Overlay */}
                             <div className="absolute inset-0 flex justify-between items-center px-3 text-[10px] font-extrabold uppercase tracking-widest z-10">
                                 <div className="flex items-center gap-1.5 text-gray-800 dark:text-gray-900 mix-blend-normal">
                                     <Trophy className="w-3 h-3" />
                                     <span>{completedGlobalCount} Done</span>
                                 </div>
-                                <span className="text-gray-800 dark:text-gray-900 opacity-90">
-                                    {globalPendingCount} Dreaming
-                                </span>
+                                <span className="text-gray-800 dark:text-gray-900 opacity-90">{globalPendingCount} Dreaming</span>
                             </div>
-                            {/* Centered % (Optional) */}
                             <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
                                 <span className={`text-[9px] font-black drop-shadow-sm ${theme === 'batman' ? 'text-gray-300' : 'text-black/20 dark:text-black/30'}`}>{Math.round(progressMeter)}%</span>
                             </div>
@@ -1125,109 +1004,53 @@ export default function App() {
                     </div>
                 )}
 
-                {/* Controls Toolbar: View Mode + Filters */}
                 <div className="flex flex-wrap gap-2 justify-between items-center px-1 mb-2">
-                    
                     <div className="flex items-center gap-2">
-                        {/* View Switcher (List/Map) + Search */}
                         <div data-tour="view-toggle" className="flex gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <button 
-                                onClick={() => { setActiveTab('list'); triggerHaptic('light'); }}
-                                className={`p-1.5 rounded-md transition-all ${activeTab === 'list' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                title="List View"
-                            >
-                                <List className="w-4 h-4" />
-                            </button>
-                            <button 
-                                onClick={() => { setActiveTab('map'); triggerHaptic('light'); }}
-                                className={`p-1.5 rounded-md transition-all ${activeTab === 'map' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                title="Map View"
-                            >
-                                <MapIcon className="w-4 h-4" />
-                            </button>
-                            
+                            <button onClick={() => { setActiveTab('list'); triggerHaptic('light'); }} className={`p-1.5 rounded-md transition-all ${activeTab === 'list' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="List View"><List className="w-4 h-4" /></button>
+                            <button onClick={() => { setActiveTab('map'); triggerHaptic('light'); }} className={`p-1.5 rounded-md transition-all ${activeTab === 'map' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Map View"><MapIcon className="w-4 h-4" /></button>
                             <div className="w-px bg-gray-100 dark:bg-gray-700 mx-0.5 my-1"></div>
-
-                            <button
-                                onClick={() => {
-                                    setIsSearchOpen(!isSearchOpen);
-                                    triggerHaptic('medium');
-                                }}
-                                className={`p-1.5 rounded-md transition-all ${isSearchOpen || searchQuery ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                title="Search"
-                            >
-                                <Search className="w-4 h-4" />
-                            </button>
+                            <button onClick={() => { setIsSearchOpen(!isSearchOpen); triggerHaptic('medium'); }} className={`p-1.5 rounded-md transition-all ${isSearchOpen || searchQuery ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Search"><Search className="w-4 h-4" /></button>
                         </div>
                     </div>
 
-                    {/* List Specific Controls */}
                     {activeTab === 'list' && (
                         <div className="flex gap-2 items-center">
-                            {/* Family Filter (Only show if members exist) */}
                             {familyMembers.length > 0 && (
                                 <div className="flex -space-x-2 mr-2 overflow-hidden bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
-                                    {/* All */}
-                                    <button 
-                                        onClick={() => { setFilterOwner(null); triggerHaptic('light'); }}
-                                        className={`relative z-30 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${!filterOwner ? 'bg-gray-800 text-white border-white dark:border-gray-600' : 'bg-gray-200 text-gray-500 border-white dark:border-gray-700 dark:bg-gray-700'}`}
-                                        title="All"
-                                    >
-                                        <Users className="w-3.5 h-3.5" />
-                                    </button>
-                                    {/* Others */}
-                                    {familyMembers.map((member, i) => (
-                                        <button 
-                                            key={member}
-                                            onClick={() => { setFilterOwner(member); triggerHaptic('light'); }}
-                                            className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === member ? 'bg-blue-600 text-white border-blue-200 scale-110' : 'bg-blue-100 text-blue-600 border-white dark:border-gray-700'}`}
-                                            title={member}
-                                        >
-                                            {getInitials(member)}
-                                        </button>
+                                    <button onClick={() => { setFilterOwner(null); triggerHaptic('light'); }} className={`relative z-30 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${!filterOwner ? 'bg-gray-800 text-white border-white dark:border-gray-600' : 'bg-gray-200 text-gray-500 border-white dark:border-gray-700 dark:bg-gray-700'}`} title="All"><Users className="w-3.5 h-3.5" /></button>
+                                    {familyMembers.map((member) => (
+                                        <button key={member} onClick={() => { setFilterOwner(member); triggerHaptic('light'); }} className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform hover:scale-110 ${filterOwner === member ? 'bg-blue-600 text-white border-blue-200 scale-110' : 'bg-blue-100 text-blue-600 border-white dark:border-gray-700'}`} title={member}>{getInitials(member)}</button>
                                     ))}
                                 </div>
                             )}
 
-                            {/* Status Filter Tabs + Compact Toggle */}
-                            <div className="bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm flex gap-0.5">
-                                <button
-                                    onClick={() => { setFilterStatus('all'); triggerHaptic('light'); }}
-                                    className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'all' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                    title="All"
-                                >
-                                    <LayoutList className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={() => { setFilterStatus('pending'); triggerHaptic('light'); }}
-                                    className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'pending' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                    title="To Do"
-                                >
-                                    <Circle className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={() => { setFilterStatus('completed'); triggerHaptic('light'); }}
-                                    className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'completed' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                    title="Done"
-                                >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                </button>
-
+                            <div className="bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm flex gap-0.5 relative">
+                                <button onClick={() => setIsSortMenuOpen(!isSortMenuOpen)} className={`px-2 py-1.5 rounded-md transition-all flex items-center justify-center ${isSortMenuOpen || sortBy !== 'newest' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Sort Items"><ArrowUpDown className="w-4 h-4" /></button>
+                                {isSortMenuOpen && (
+                                    <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 p-1">
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 py-2">Sort By</div>
+                                        {[
+                                            { id: 'newest', label: 'Newest First', icon: Clock },
+                                            { id: 'oldest', label: 'Oldest First', icon: Clock },
+                                            { id: 'az', label: 'Name (A-Z)', icon: ArrowDownAZ },
+                                            { id: 'za', label: 'Name (Z-A)', icon: ArrowUpAZ },
+                                            { id: 'completed_recent', label: 'Recently Done', icon: CalendarDays }
+                                        ].map((opt) => (
+                                            <button key={opt.id} onClick={() => { setSortBy(opt.id as SortOption); setIsSortMenuOpen(false); triggerHaptic('light'); }} className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${sortBy === opt.id ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}><opt.icon className="w-3.5 h-3.5" />{opt.label}{sortBy === opt.id && <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-orange-500" />}</button>
+                                        ))}
+                                    </div>
+                                )}
                                 <div className="w-px bg-gray-100 dark:bg-gray-700 mx-0.5 my-1"></div>
-
-                                <button
-                                    onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }}
-                                    className={`px-2 py-1.5 rounded-md transition-all flex items-center justify-center ${isCompact ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                    title="Compact View"
-                                >
-                                    <AlignJustify className="w-4 h-4" />
-                                </button>
+                                <button onClick={() => { setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending'); triggerHaptic('light'); }} className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'pending' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="To Do"><Circle className="w-4 h-4" /></button>
+                                <button onClick={() => { setFilterStatus(filterStatus === 'completed' ? 'all' : 'completed'); triggerHaptic('light'); }} className={`px-3 py-1.5 rounded-md transition-all flex items-center justify-center ${filterStatus === 'completed' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Done"><CheckCircle2 className="w-4 h-4" /></button>
+                                <div className="w-px bg-gray-100 dark:bg-gray-700 mx-0.5 my-1"></div>
+                                <button onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }} className={`px-2 py-1.5 rounded-md transition-all flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300`} title="Toggle View"><LayoutList className="w-4 h-4" /></button>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* CONTENT AREA */}
                 <div className="pb-20 space-y-3">
                     {activeTab === 'map' ? (
                         <div className="animate-in fade-in zoom-in-95 duration-300">
@@ -1235,15 +1058,15 @@ export default function App() {
                         </div>
                     ) : (
                         <>
-                            {filterStatus === 'completed' && filteredItems.length > 0 && (
+                            {filterStatus === 'completed' && sortedItems.length > 0 && (
                                 <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-                                    <TimelineView items={filteredItems} onEdit={handleEditClick} pendingCount={pendingCount} onViewPending={() => setFilterStatus('pending')} />
+                                    <TimelineView items={sortedItems} onEdit={handleEditClick} pendingCount={pendingCount} onViewPending={() => setFilterStatus('pending')} />
                                 </div>
                             )}
 
                             {filterStatus !== 'completed' && (
                                 <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    {filteredItems.length === 0 ? (
+                                    {sortedItems.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
                                             <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-4">
                                                 {filterStatus === 'completed' ? <Trophy className="w-8 h-8 text-gray-400" /> : <LayoutList className="w-8 h-8 text-gray-400" />}
@@ -1253,7 +1076,7 @@ export default function App() {
                                             </p>
                                         </div>
                                     ) : (
-                                        filteredItems.map(item => (
+                                        sortedItems.map(item => (
                                             <BucketListCard 
                                                 key={item.id} 
                                                 item={item} 
@@ -1281,96 +1104,65 @@ export default function App() {
         )}
       </main>
 
-      {/* Tiny Overlay Popup for Search (Only Input) */}
-      {isSearchOpen && (
-          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] w-[90%] max-w-md animate-in slide-in-from-top-4 duration-200">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-3 border border-red-100 dark:border-red-900/30 flex items-center gap-3">
-                  <Search className="w-5 h-5 text-gray-400 ml-1" />
-                  <input 
-                      autoFocus
-                      type="text" 
-                      placeholder="Search dreams, locations..." 
-                      value={searchQuery}
-                      onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          if(activeTab !== 'list') setActiveTab('list');
-                      }}
-                      className="flex-1 bg-transparent outline-none text-gray-900 dark:text-white placeholder-gray-400 text-sm font-medium"
-                  />
-                  {searchQuery && (
-                      <button onClick={() => setSearchQuery('')} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 transition-colors">
-                          <X className="w-4 h-4" />
-                      </button>
-                  )}
-                  <button 
-                    onClick={() => setIsSearchOpen(false)} 
-                    className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  >
-                      Done
-                  </button>
-              </div>
-          </div>
-      )}
+      {/* Floating Action Button with Animated Bucket */}
+      <button
+        data-tour="add-btn"
+        onClick={() => {
+            setEditingItem(null);
+            setIsAddModalOpen(true);
+            triggerHaptic('medium');
+        }}
+        className="fixed bottom-6 right-6 w-20 h-20 z-40 transition-transform hover:scale-110 active:scale-95 group filter drop-shadow-2xl"
+        title="Add Dream"
+      >
+        <div className="relative w-full h-full z-10 pointer-events-none">
+             <LiquidBucket 
+                text="" 
+                hideText={true}
+                className="w-full h-full"
+                fillPercent={Math.max(15, progressMeter)}
+                frontColor={fabTheme.front}
+                backColor={fabTheme.back}
+                backgroundColor={fabTheme.background}
+                outlineColor={fabTheme.outline}
+             />
+        </div>
+        {/* Plus Badge */}
+        <div className="absolute top-0 right-1 w-8 h-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-full flex items-center justify-center border-2 border-gray-100 dark:border-gray-700 shadow-sm z-20">
+            <Plus className="w-5 h-5 font-bold" strokeWidth={3} />
+        </div>
+      </button>
 
-      {/* Floating Action Button (FAB) - Added margin-bottom for Safe Area Insets (Home Bar) */}
-      {!isSearchOpen && !planningItem && (
-        <button
-            data-tour="add-btn"
-            onClick={() => {
-                setIsAddModalOpen(true);
-                triggerHaptic('medium');
-            }}
-            className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 group"
-            aria-label="Add Dream"
-        >
-             <div className="relative flex items-center justify-center">
-                {/* Bucket Icon - Increased Size */}
-                <div className={`transition-transform duration-300 group-hover:-rotate-12 group-active:scale-95 filter drop-shadow-xl`}>
-                    <LiquidBucket 
-                        text="fab" 
-                        hideText={true} 
-                        className="w-20 h-20"
-                        frontColor={fabTheme.front}
-                        backColor={fabTheme.back}
-                        outlineColor={fabTheme.outline}
-                        fillPercent={fillPercentage}
-                    />
-                </div>
-                
-                {/* Plus Badge */}
-                <div 
-                    className="absolute top-0 right-0 translate-x-1 translate-y-1 rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2"
-                    style={{ 
-                        backgroundColor: fabTheme.badgeBg, 
-                        borderColor: fabTheme.badgeBorder, 
-                        color: fabTheme.badgeText 
-                    }}
-                >
-                    <Plus className="w-5 h-5 stroke-[4]" />
-                </div>
-            </div>
-
-            <span className="absolute -top-8 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                Add Dream
-            </span>
-        </button>
-      )}
-
-      {/* Modals */}
-      <AddItemModal 
-        isOpen={isAddModalOpen} 
+      {/* MODALS */}
+      <AddItemModal
+        isOpen={isAddModalOpen}
         onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }}
         onAdd={handleAddItem}
         categories={categories}
         availableInterests={interests}
         familyMembers={familyMembers}
-        initialData={editingItem}
+        initialData={editingItem ? {
+            title: editingItem.title,
+            description: editingItem.description,
+            locationName: editingItem.locationName,
+            latitude: editingItem.coordinates?.latitude,
+            longitude: editingItem.coordinates?.longitude,
+            images: editingItem.images,
+            category: editingItem.category,
+            interests: editingItem.interests,
+            owner: editingItem.owner,
+            isCompleted: editingItem.completed,
+            completedAt: editingItem.completedAt,
+            bestTimeToVisit: editingItem.bestTimeToVisit,
+            itinerary: editingItem.itinerary,
+            roadTrip: editingItem.roadTrip
+        } : null}
         mode={editingItem ? 'edit' : 'add'}
         items={items}
         editingId={editingItem?.id}
       />
-      
-      <SettingsModal 
+
+      <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         currentTheme={theme}
@@ -1381,12 +1173,12 @@ export default function App() {
         categories={categories}
         interests={interests}
         familyMembers={familyMembers}
-        onAddCategory={(c) => setCategories(p => [...p, c])}
-        onRemoveCategory={(c) => setCategories(p => p.filter(x => x !== c))}
-        onAddInterest={(i) => setInterests(p => [...p, i])}
-        onRemoveInterest={(i) => setInterests(p => p.filter(x => x !== i))}
-        onAddFamilyMember={(m) => setFamilyMembers(p => [...p, m])}
-        onRemoveFamilyMember={(m) => setFamilyMembers(p => p.filter(x => x !== m))}
+        onAddCategory={(c) => setCategories(prev => [...prev, c])}
+        onRemoveCategory={(c) => setCategories(prev => prev.filter(cat => cat !== c))}
+        onAddInterest={(i) => setInterests(prev => [...prev, i])}
+        onRemoveInterest={(i) => setInterests(prev => prev.filter(int => int !== i))}
+        onAddFamilyMember={(m) => setFamilyMembers(prev => [...prev, m])}
+        onRemoveFamilyMember={(m) => setFamilyMembers(prev => prev.filter(mem => mem !== m))}
         onLogout={() => setUser(null)}
         items={items}
         onRestore={handleRestoreData}
@@ -1394,34 +1186,25 @@ export default function App() {
         onProximityRangeChange={setProximityRange}
         onRestartTour={() => {
             setIsSettingsOpen(false);
-            setTimeout(() => setShowOnboarding(true), 300);
+            setShowOnboarding(true);
         }}
         onReauth={handleGoogleReauth}
       />
 
-      <CompleteDateModal 
-        isOpen={!!completingItem}
-        onClose={() => setCompletingItem(null)}
-        onConfirm={handleConfirmCompletion}
-        itemTitle={completingItem?.title}
-      />
-
-      <ChangelogModal 
-        isOpen={isChangelogOpen} 
-        onClose={() => setIsChangelogOpen(false)} 
-      />
-
+      <ChangelogModal isOpen={isChangelogOpen} onClose={() => setIsChangelogOpen(false)} />
+      <ImageGalleryModal item={viewingItemImages} onClose={() => setViewingItemImages(null)} />
       <NotificationsModal 
-        isOpen={isNotificationsOpen}
-        onClose={() => setIsNotificationsOpen(false)}
-        notifications={notifications}
-        onMarkAllRead={handleMarkAllNotificationsRead}
-        onClearAll={handleClearNotifications}
+          isOpen={isNotificationsOpen} 
+          onClose={() => setIsNotificationsOpen(false)} 
+          notifications={notifications}
+          onMarkAllRead={handleMarkAllNotificationsRead}
+          onClearAll={handleClearNotifications}
       />
-
-      <ImageGalleryModal
-        item={viewingItemImages}
-        onClose={() => setViewingItemImages(null)}
+      <CompleteDateModal 
+          isOpen={!!completingItem} 
+          onClose={() => setCompletingItem(null)} 
+          onConfirm={handleConfirmCompletion} 
+          itemTitle={completingItem?.title}
       />
 
     </div>
