@@ -51,7 +51,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   useEffect(() => {
     setFailedPreviewImages(new Set());
     if (isOpen && initialData && mode === 'edit') {
-        setDraft(initialData);
+        // When editing, map the complex object to the simpler draft shape if needed
+        const mappedDraft: BucketItemDraft = { ...initialData };
+        // Explicitly map coordinates if they exist in the full item object
+        // The type BucketItem has 'coordinates: {latitude, longitude}'
+        // The type BucketItemDraft expects 'latitude' and 'longitude' at root
+        if ((initialData as any).coordinates) {
+            mappedDraft.latitude = (initialData as any).coordinates.latitude;
+            mappedDraft.longitude = (initialData as any).coordinates.longitude;
+        }
+
+        setDraft(mappedDraft);
         setSelectedCategory(initialData.category || 'Other');
         setSelectedInterests(initialData.interests || []);
         setSelectedOwner(initialData.owner || 'Me');
@@ -306,7 +316,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                                 value={draft.locationName || ''}
                                 onChange={(e) => handleDraftChange('locationName', e.target.value)}
                                 className="text-xs font-medium text-red-600 dark:text-red-400 bg-transparent border-b border-red-200 dark:border-red-800 focus:outline-none focus:border-red-500 w-full"
-                                placeholder="Location Name (Optional for non-travel items)"
+                                placeholder="Location Name (Optional)"
                             />
                          </div>
                          <div className="flex items-center gap-2">

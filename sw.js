@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'just-knock-v1.3';
+const CACHE_NAME = 'just-knock-v1.6';
 const ASSETS_TO_CACHE = [
   './',
   'index.html',

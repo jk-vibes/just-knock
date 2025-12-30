@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Radar, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag, ArrowUpDown, CalendarDays, ArrowDownAZ, ArrowUpAZ, Download } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Plus, Radar, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag, ArrowUpDown, CalendarDays, ArrowDownAZ, ArrowUpAZ, Download, Sparkles, History, Target } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -45,7 +45,7 @@ const LiquidBucket = ({
     className = "w-10 h-10", 
     hideText = false,
     frontColor,
-    backColor,
+    backColor, // Keep backColor prop for API compatibility but it might be unused if we rely on fillPercent logic inside
     backgroundColor, // New: Color for the empty/pending part
     outlineColor,
     fillPercent = 50
@@ -224,7 +224,7 @@ export default function App() {
     return (localStorage.getItem(THEME_KEY) as Theme) || 'system';
   });
   
-  // Sorting State
+  // Sorting & Filtering State
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   
@@ -590,7 +590,6 @@ export default function App() {
     setIsAddModalOpen(false);
   };
 
-  // ... rest of the App component ...
   const handleAddSeparateItem = (newItem: BucketItem) => {
       setItems(prev => [newItem, ...prev]);
       triggerHaptic('success');
@@ -787,66 +786,108 @@ export default function App() {
     }
   };
 
-  const getPendingColor = () => {
-      switch (theme) {
-          case 'batman': return '#1f2937'; // gray-800
-          case 'marvel': return '#1e3a8a'; // blue-900
-          case 'elsa': return '#cffafe'; // cyan-100
-          default: return '#e2e8f0'; // slate-200
-      }
-  };
-
-  const getFillColor = () => {
-      switch (theme) {
-          case 'batman': return '#f59e0b'; // amber-500
-          case 'marvel': return '#dc2626'; // red-600
-          case 'elsa': return '#06b6d4'; // cyan-500
-          default: return '#22c55e'; // green-500
-      }
-  };
-
   const fabTheme = getFABTheme(theme);
 
-  const filteredItems = items.filter(item => {
-    if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch = (
-            item.title.toLowerCase().includes(query) ||
-            item.description.toLowerCase().includes(query) ||
-            (item.locationName && item.locationName.toLowerCase().includes(query)) ||
-            (item.category && item.category.toLowerCase().includes(query)) ||
-            (item.interests && item.interests.some(i => i.toLowerCase().includes(query)))
-        );
-        if (!matchesSearch) return false;
+  const getProgressBarTheme = (currentTheme: Theme) => {
+    switch (currentTheme) {
+        case 'marvel':
+            return { 
+                completedBg: 'bg-gradient-to-r from-red-600 to-red-800 shadow-inner', 
+                completedText: 'text-white drop-shadow-sm',
+                dreamingBg: 'bg-gradient-to-r from-blue-700 to-blue-900 shadow-inner',
+                dreamingText: 'text-white drop-shadow-sm'
+            }; 
+        case 'batman':
+            return { 
+                completedBg: 'bg-gradient-to-r from-yellow-500 to-amber-500 shadow-inner', 
+                completedText: 'text-black',
+                dreamingBg: 'bg-gradient-to-r from-gray-800 to-black shadow-inner',
+                dreamingText: 'text-gray-400'
+            }; 
+        case 'elsa':
+            return { 
+                completedBg: 'bg-gradient-to-r from-cyan-400 to-cyan-600 shadow-inner', 
+                completedText: 'text-white drop-shadow-md',
+                dreamingBg: 'bg-gradient-to-r from-sky-100 to-sky-300 shadow-inner',
+                dreamingText: 'text-sky-900'
+            }; 
+        default:
+            return { 
+                completedBg: 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-inner', 
+                completedText: 'text-white drop-shadow-sm',
+                dreamingBg: 'bg-gradient-to-r from-blue-400 to-indigo-500 shadow-inner',
+                dreamingText: 'text-white drop-shadow-sm'
+            }; 
     }
-    if (filterStatus === 'pending' && item.completed) return false;
-    if (filterStatus === 'completed' && !item.completed) return false;
-    if (filterOwner) {
-        if (filterOwner === 'Me') {
-            if (item.owner && item.owner !== 'Me') return false;
-        } else {
-            if (item.owner !== filterOwner) return false;
-        }
-    }
-    if (filterCategory && item.category !== filterCategory) return false;
-    if (filterInterest && (!item.interests || !item.interests.includes(filterInterest))) return false;
-    return true;
-  });
+  };
 
-  const sortedItems = [...filteredItems].sort((a, b) => {
-      switch (sortBy) {
-          case 'newest': return (b.createdAt || 0) - (a.createdAt || 0);
-          case 'oldest': return (a.createdAt || 0) - (b.createdAt || 0);
-          case 'az': return a.title.localeCompare(b.title);
-          case 'za': return b.title.localeCompare(a.title);
-          case 'completed_recent': 
-              if (!a.completedAt && !b.completedAt) return 0;
-              if (!a.completedAt) return 1;
-              if (!b.completedAt) return -1;
-              return b.completedAt - a.completedAt;
-          default: return 0;
-      }
-  });
+  const progressTheme = getProgressBarTheme(theme);
+
+  // Filter logic including Time Filter (Only for List Mode)
+  const filteredItems = useMemo(() => {
+      return items.filter(item => {
+        // 1. Search
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const matchesSearch = (
+                item.title.toLowerCase().includes(query) ||
+                item.description.toLowerCase().includes(query) ||
+                (item.locationName && item.locationName.toLowerCase().includes(query)) ||
+                (item.category && item.category.toLowerCase().includes(query)) ||
+                (item.interests && item.interests.some(i => i.toLowerCase().includes(query)))
+            );
+            if (!matchesSearch) return false;
+        }
+
+        // 2. Status Filter
+        if (filterStatus === 'pending' && item.completed) return false;
+        if (filterStatus === 'completed' && !item.completed) return false;
+
+        // 3. Owner Filter
+        if (filterOwner) {
+            if (filterOwner === 'Me') {
+                if (item.owner && item.owner !== 'Me') return false;
+            } else {
+                if (item.owner !== filterOwner) return false;
+            }
+        }
+
+        // 4. Category/Interest
+        if (filterCategory && item.category !== filterCategory) return false;
+        if (filterInterest && (!item.interests || !item.interests.includes(filterInterest))) return false;
+        
+        return true;
+      });
+  }, [items, searchQuery, filterStatus, filterOwner, filterCategory, filterInterest]);
+
+  const sortedItems = useMemo(() => {
+      return [...filteredItems].sort((a, b) => {
+          switch (sortBy) {
+              case 'newest': return (b.createdAt || 0) - (a.createdAt || 0);
+              case 'oldest': return (a.createdAt || 0) - (b.createdAt || 0);
+              case 'az': return a.title.localeCompare(b.title);
+              case 'za': return b.title.localeCompare(a.title);
+              case 'completed_recent': 
+                  if (!a.completedAt && !b.completedAt) return 0;
+                  if (!a.completedAt) return 1;
+                  if (!b.completedAt) return -1;
+                  return b.completedAt - a.completedAt;
+              default: return 0;
+          }
+      });
+  }, [filteredItems, sortBy]);
+
+  // Calculate stats for the current view (for display under slider)
+  const viewStats = useMemo(() => {
+      return {
+          done: filteredItems.filter(i => i.completed).length,
+          pending: filteredItems.filter(i => !i.completed).length,
+          total: filteredItems.length
+      };
+  }, [filteredItems]);
+
+  const completedPercent = viewStats.total > 0 ? (viewStats.done / viewStats.total) * 100 : 0;
+  const pendingPercent = viewStats.total > 0 ? (viewStats.pending / viewStats.total) * 100 : 0;
 
   if (!user) {
     return (
@@ -1004,23 +1045,345 @@ export default function App() {
                 userLocation={userLocation}
             />
         ) : (
-            <div className="max-w-2xl mx-auto px-4 py-2 space-y-2 w-full overflow-y-auto no-scrollbar h-full">
-                {(searchQuery || filterCategory || filterInterest) && (
-                    <div className="px-1 mb-2 animate-in fade-in slide-in-from-top-2 flex flex-wrap gap-2">
-                        {searchQuery && (
-                            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-full border border-red-100 dark:border-red-900/30">
-                                <Search className="w-3.5 h-3.5 text-red-500" />
-                                <span className="text-xs font-bold text-red-900 dark:text-red-100 max-w-[150px] truncate">"{searchQuery}"</span>
-                                <button onClick={() => { setSearchQuery(''); triggerHaptic('light'); }} className="p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
+            <>
+                {/* TOOLBAR: List Controls & View Switcher */}
+                <div className="w-full z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
+                    <div className="max-w-2xl mx-auto px-4 py-3">
+                        
+                        {/* Active Filters Row (Tags) */}
+                        {(searchQuery || filterCategory || filterInterest) && (
+                            <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1 mb-2">
+                                {searchQuery && (
+                                    <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-full border border-red-100 dark:border-red-900/30">
+                                        <Search className="w-3.5 h-3.5 text-red-500" />
+                                        <span className="text-xs font-bold text-red-900 dark:text-red-100 max-w-[150px] truncate">"{searchQuery}"</span>
+                                        <button onClick={() => { setSearchQuery(''); triggerHaptic('light'); }} className="p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                )}
+                                {filterCategory && (
+                                    <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900/30">
+                                        <CategoryIcon category={filterCategory} className="w-3.5 h-3.5 text-blue-500" />
+                                        <span className="text-xs font-bold text-blue-900 dark:text-blue-100">{filterCategory}</span>
+                                        <button onClick={() => { setFilterCategory(null); triggerHaptic('light'); }} className="p-0.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                )}
+                                {filterInterest && (
+                                    <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-900/30">
+                                        <Tag className="w-3.5 h-3.5 text-green-500" />
+                                        <span className="text-xs font-bold text-green-900 dark:text-green-100">{filterInterest}</span>
+                                        <button onClick={() => { setFilterInterest(null); triggerHaptic('light'); }} className="p-0.5 rounded-full hover:bg-green-100 dark:hover:bg-green-900/40 text-green-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                )}
                             </div>
                         )}
-                        {filterCategory && (
-                            <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900/30">
-                                <CategoryIcon category={filterCategory} className="w-3.5 h-3.5 text-blue-500" />
-                                <span className="text-xs font-bold text-blue-900 dark:text-blue-100">{filterCategory}</span>
-                                <button onClick={() => { setFilterCategory(null); triggerHaptic('light'); }} className="p-0.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
+
+                        {/* Stats Bar (Progress View) - Only in List View & if we have items */}
+                        {activeTab === 'list' && viewStats.total > 0 && (
+                            <div className="mb-1 rounded-xl overflow-hidden flex h-9 shadow-sm border border-gray-100 dark:border-gray-700 relative bg-gray-100 dark:bg-gray-800">
+                                {/* Completed Bar */}
+                                <div 
+                                    className={`${progressTheme.completedBg} h-full flex items-center justify-center ${progressTheme.completedText} text-[10px] font-bold uppercase tracking-wider transition-all duration-500 overflow-hidden`}
+                                    style={{ width: `${completedPercent}%` }}
+                                >
+                                    {completedPercent > 15 && <span className="truncate px-1">Knocked {viewStats.done} ({Math.round(completedPercent)}%)</span>}
+                                </div>
+                                
+                                {/* Pending Bar */}
+                                <div 
+                                    className={`${progressTheme.dreamingBg} h-full flex items-center justify-center ${progressTheme.dreamingText} text-[10px] font-bold uppercase tracking-wider transition-all duration-500 overflow-hidden`}
+                                    style={{ width: `${pendingPercent}%` }}
+                                >
+                                    {pendingPercent > 15 && <span className="truncate px-1">Dreaming {viewStats.pending}</span>}
+                                </div>
                             </div>
                         )}
-                        {filterInterest && (
-                            <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-900/30">
-                                <Tag className="w-3.5
+
+                        <div className="flex items-center justify-between mb-2">
+                            {/* Icon-based View Switcher */}
+                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                                <button 
+                                    onClick={() => { setActiveTab('list'); triggerHaptic('light'); }}
+                                    className={`p-2 rounded-lg transition-all ${activeTab === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                                    title="List View"
+                                >
+                                    <List className="w-5 h-5" />
+                                </button>
+                                <button 
+                                    onClick={() => { setActiveTab('map'); triggerHaptic('light'); }}
+                                    className={`p-2 rounded-lg transition-all ${activeTab === 'map' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                                    title="Map View"
+                                >
+                                    <MapIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* List Controls */}
+                            {activeTab === 'list' && (
+                                <div className="flex items-center gap-2">
+                                    <button 
+                                        onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }}
+                                        className={`p-2 rounded-lg transition-all ${isCompact ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400'}`}
+                                        title="Compact View"
+                                    >
+                                        <AlignJustify className="w-5 h-5" />
+                                    </button>
+                                    
+                                    <div className="relative">
+                                        <button 
+                                            onClick={() => { setIsSortMenuOpen(!isSortMenuOpen); triggerHaptic('light'); }}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isSortMenuOpen ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
+                                        >
+                                            <ArrowUpDown className="w-4 h-4" />
+                                            <span className="hidden sm:inline">Sort</span>
+                                        </button>
+
+                                        {/* Sort Dropdown */}
+                                        {isSortMenuOpen && (
+                                            <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1 w-40 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 z-50">
+                                                <button onClick={() => { setSortBy('newest'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'newest' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                    <CalendarDays className="w-3.5 h-3.5" /> Newest First
+                                                </button>
+                                                <button onClick={() => { setSortBy('oldest'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'oldest' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                    <History className="w-3.5 h-3.5" /> Oldest First
+                                                </button>
+                                                <button onClick={() => { setSortBy('az'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'az' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                    <ArrowDownAZ className="w-3.5 h-3.5" /> Name (A-Z)
+                                                </button>
+                                                <button onClick={() => { setSortBy('za'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'za' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                    <ArrowUpAZ className="w-3.5 h-3.5" /> Name (Z-A)
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Family Member Filter Row */}
+                        {familyMembers.length > 0 && (
+                            <div className="flex items-center gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
+                                <button 
+                                    onClick={() => setFilterOwner(null)}
+                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all shrink-0 ${!filterOwner ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold' : 'border-transparent bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                                >
+                                    All
+                                </button>
+                                {familyMembers.map(member => (
+                                    <button 
+                                        key={member}
+                                        onClick={() => setFilterOwner(filterOwner === member ? null : member)}
+                                        className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all shrink-0 text-xs font-bold ${filterOwner === member ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'border-transparent bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/40'}`}
+                                    >
+                                        {getInitials(member)}
+                                    </button>
+                                ))}
+                                <button 
+                                    onClick={() => setFilterOwner('Me')}
+                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all shrink-0 text-xs font-bold ${filterOwner === 'Me' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'border-transparent bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/40'}`}
+                                >
+                                    Me
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto no-scrollbar w-full">
+                    <div className="max-w-2xl mx-auto px-4 py-4 pb-24 h-full">
+                        {activeTab === 'list' ? (
+                            <div className="space-y-3">
+                                {filterStatus === 'completed' ? (
+                                    <TimelineView 
+                                        items={sortedItems.filter(i => i.completed)} 
+                                        onEdit={handleEditClick}
+                                        pendingCount={pendingCount}
+                                        onViewPending={() => {
+                                            setFilterStatus('pending');
+                                            setSortBy('newest');
+                                        }}
+                                    />
+                                ) : (
+                                    sortedItems.map(item => (
+                                    <BucketListCard
+                                        key={item.id}
+                                        item={item}
+                                        userLocation={userLocation}
+                                        onToggleComplete={handleToggleComplete}
+                                        onDelete={handleDelete}
+                                        onEdit={handleEditClick}
+                                        onViewImages={setViewingItemImages}
+                                        onCategoryClick={handleCategoryClick}
+                                        onInterestClick={handleInterestClick}
+                                        onToggleItineraryItem={handleToggleItineraryItem}
+                                        onOpenPlanner={setPlanningItem}
+                                        isCompact={isCompact}
+                                        proximityRange={proximityRange}
+                                        theme={theme}
+                                    />
+                                    ))
+                                )}
+                                {sortedItems.length === 0 && (
+                                    <div className="text-center py-20 px-4">
+                                        <div className="mb-4 text-gray-200 dark:text-gray-700 flex justify-center">
+                                            <Sparkles className="w-16 h-16" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No dreams found</h3>
+                                        <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs mx-auto">
+                                            {filterStatus === 'completed'
+                                                    ? "You haven't completed any items yet. Keep dreaming!"
+                                                    : "Start your journey by adding a new dream to your bucket list."
+                                            }
+                                        </p>
+                                        {filterStatus === 'completed' && (
+                                            <button 
+                                                onClick={() => setFilterStatus('pending')}
+                                                className="mt-4 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                            >
+                                                View Pending Dreams
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <MapView 
+                                // For map, we pass original items sorted but NOT filtered by timeline slider
+                                // MapView has its own internal slider.
+                                // We need a fresh sort of the raw filtered items (ignoring the time filter applied above)
+                                items={items.filter(item => {
+                                    // Re-apply generic filters but skip the time filter
+                                    if (searchQuery) {
+                                        const query = searchQuery.toLowerCase();
+                                        if (!(item.title.toLowerCase().includes(query) ||
+                                            item.description.toLowerCase().includes(query) ||
+                                            (item.locationName && item.locationName.toLowerCase().includes(query)) ||
+                                            (item.category && item.category.toLowerCase().includes(query)) ||
+                                            (item.interests && item.interests.some(i => i.toLowerCase().includes(query))))) return false;
+                                    }
+                                    if (filterStatus === 'pending' && item.completed) return false;
+                                    if (filterStatus === 'completed' && !item.completed) return false;
+                                    if (filterOwner) {
+                                        if (filterOwner === 'Me') {
+                                            if (item.owner && item.owner !== 'Me') return false;
+                                        } else {
+                                            if (item.owner !== filterOwner) return false;
+                                        }
+                                    }
+                                    if (filterCategory && item.category !== filterCategory) return false;
+                                    if (filterInterest && (!item.interests || !item.interests.includes(filterInterest))) return false;
+                                    return true;
+                                })}
+                                userLocation={userLocation} 
+                                proximityRange={proximityRange} 
+                            />
+                        )}
+                    </div>
+                </div>
+            </>
+        )}
+      </main>
+
+      {/* Floating Action Button for Add */}
+      {!planningItem && (
+        <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 pointer-events-none">
+            
+            {/* Main Action Liquid Bucket */}
+            <div data-tour="add-btn" className="relative group pointer-events-auto">
+                 {/* Hover Tooltip for Count */}
+                 <div className="absolute right-[110%] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
+                    {pendingCount} Dreams Pending
+                    {/* Arrow */}
+                    <div className="absolute top-1/2 -right-1 -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+                 </div>
+
+                 <button
+                    onClick={() => {
+                        setIsAddModalOpen(true);
+                        triggerHaptic('medium');
+                    }}
+                    className="relative transition-transform duration-300 hover:scale-105 active:scale-95"
+                >
+                    <LiquidBucket 
+                        text="" 
+                        className="w-16 h-16 drop-shadow-2xl" 
+                        outlineColor={fabTheme.outline}
+                        frontColor={fabTheme.front}
+                        backColor={fabTheme.back}
+                        backgroundColor={fabTheme.background}
+                        fillPercent={progressMeter}
+                    />
+                    
+                    {/* Plus Icon Overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <Plus className="w-8 h-8 text-white filter drop-shadow-md" strokeWidth={3} />
+                    </div>
+                </button>
+            </div>
+        </div>
+      )}
+      
+      {/* Modals */}
+      <AddItemModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }}
+        onAdd={handleAddItem}
+        categories={categories}
+        availableInterests={interests}
+        familyMembers={familyMembers}
+        initialData={editingItem}
+        mode={editingItem ? 'edit' : 'add'}
+        items={items}
+        editingId={editingItem?.id}
+      />
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)}
+        currentTheme={theme}
+        onThemeChange={setTheme}
+        onClearData={() => setItems([])}
+        onClearMockData={handleClearMockData}
+        onAddMockData={handleAddMockData}
+        categories={categories}
+        interests={interests}
+        familyMembers={familyMembers}
+        onAddCategory={(c) => setCategories([...categories, c])}
+        onRemoveCategory={(c) => setCategories(categories.filter(cat => cat !== c))}
+        onAddInterest={(i) => setInterests([...interests, i])}
+        onRemoveInterest={(i) => setInterests(interests.filter(int => int !== i))}
+        onAddFamilyMember={(m) => setFamilyMembers([...familyMembers, m])}
+        onRemoveFamilyMember={(m) => setFamilyMembers(familyMembers.filter(f => f !== m))}
+        onLogout={() => { setUser(null); setIsSettingsOpen(false); }}
+        items={items}
+        onRestore={handleRestoreData}
+        proximityRange={proximityRange}
+        onProximityRangeChange={setProximityRange}
+        onRestartTour={() => {
+            setIsSettingsOpen(false);
+            setShowOnboarding(true);
+        }}
+        onReauth={handleGoogleReauth}
+      />
+      <CompleteDateModal 
+        isOpen={!!completingItem}
+        onClose={() => setCompletingItem(null)}
+        onConfirm={handleConfirmCompletion}
+        itemTitle={completingItem?.title}
+      />
+      <ChangelogModal 
+        isOpen={isChangelogOpen}
+        onClose={() => setIsChangelogOpen(false)}
+      />
+      <ImageGalleryModal 
+        item={viewingItemImages}
+        onClose={() => setViewingItemImages(null)}
+      />
+      <NotificationsModal 
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        notifications={notifications}
+        onMarkAllRead={handleMarkAllNotificationsRead}
+        onClearAll={handleClearNotifications}
+      />
+    </div>
+  );
+}

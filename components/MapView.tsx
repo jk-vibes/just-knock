@@ -2,8 +2,8 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as L from 'leaflet';
 import { BucketItem, Coordinates } from '../types';
-import { calculateDistance, formatDistance } from '../utils/geo';
-import { Trophy, Target, Navigation, Map as MapIcon, Calendar, History, MapPin } from 'lucide-react';
+import { calculateDistance } from '../utils/geo';
+import { Trophy, Target, MapPin } from 'lucide-react';
 
 interface MapViewProps {
   items: BucketItem[];
@@ -37,8 +37,9 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
   }, [timelineSteps.length, sliderValue]);
 
   const selectedYear = timelineSteps[sliderValue] === 'All' ? null : (timelineSteps[sliderValue] as number);
+  const currentLabel = timelineSteps[sliderValue];
 
-  // 2. Filter Items for Map & Stats
+  // 2. Filter Items for Map & Stats based on local slider
   const displayItems = useMemo(() => {
       if (selectedYear === null) return items;
       return items.filter(i => {
@@ -54,7 +55,10 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
     const total = displayItems.length;
     const completedItems = displayItems.filter(i => i.completed);
     const completed = completedItems.length;
-    const pending = selectedYear === null ? total - completed : 0; // No pending in history view
+    // If a specific year is selected, 'pending' doesn't make much sense in that context usually, 
+    // or implies items from that year that aren't done? But items have dates only when completed.
+    // So we show 0 pending if specific year is selected, or we could just show total pending in 'All' view.
+    const pending = selectedYear === null ? items.filter(i => !i.completed).length : 0; 
     
     // Unique locations in this view
     const locationsCount = new Set(displayItems.map(i => i.locationName).filter(Boolean)).size;
@@ -141,16 +145,15 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
             color = '#ef4444'; // Red for Nearby
         }
         
-        // Pin SVG (Smaller, cleaner, no thick white stroke)
+        // Pin SVG
         const pinSvg = `
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" stroke="none" class="w-full h-full filter drop-shadow-sm">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5-2.5-1.12 2.5-2.5 2.5z"/>
           </svg>
         `;
 
         let iconHtml;
         if (isNearby) {
-            // Pulse effect for nearby (Red)
             iconHtml = `
               <div class="relative flex items-center justify-center w-full h-full">
                 <span class="absolute bottom-0 w-3 h-3 bg-red-500 rounded-full animate-ping opacity-75"></span>
@@ -162,10 +165,10 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
         }
 
         const icon = L.divIcon({
-          className: '!bg-transparent border-none', // Override default leaflet white square
+          className: '!bg-transparent border-none',
           html: iconHtml,
-          iconSize: [24, 24], // Smaller size
-          iconAnchor: [12, 24], // Center bottom
+          iconSize: [24, 24],
+          iconAnchor: [12, 24],
           popupAnchor: [0, -24]
         });
 
@@ -201,53 +204,19 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
   }, [displayItems, userLocation, proximityRange, selectedYear]);
 
   return (
-    <div className="h-[calc(100vh-180px)] min-h-[350px] w-full rounded-2xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700 relative z-0">
+    <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700 relative z-0">
       <div ref={mapContainerRef} className="w-full h-full" />
       
-      {/* Control Panel - Moved to Top with Compact Design */}
-      <div className="absolute top-2 left-2 right-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md p-3 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-[500] animate-in slide-in-from-top-2 fade-in">
+      {/* Control Panel - Floating */}
+      <div className="absolute top-3 left-3 right-3 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md p-3.5 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 z-[500] flex flex-col gap-3">
          
-         {/* Top Row: Year and Stats */}
-         <div className="flex justify-between items-center mb-4">
-             {/* Year Badge */}
-             <div className="flex items-center gap-2">
-                 <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-lg shadow-sm border border-indigo-100 dark:border-indigo-800/30">
-                     {selectedYear || 'All Time'}
-                 </span>
-             </div>
-
-             {/* Small Stats */}
-             <div className="flex gap-4">
-                 <div className="flex flex-col items-end">
-                     <div className="flex items-center gap-1.5">
-                        <Trophy className="w-3.5 h-3.5 text-green-500" />
-                        <span className="text-sm font-black text-gray-800 dark:text-gray-100">{stats.completed}</span>
-                     </div>
-                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Done</span>
-                 </div>
+         {/* Compact Slider Row (Top) */}
+         {timelineSteps.length > 1 && (
+             <div className="relative h-12 w-full flex items-center select-none px-1">
+                 {/* Decorative Track */}
+                 <div className="absolute left-2 right-2 h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden border border-gray-200 dark:border-gray-600" />
                  
-                 <div className="flex flex-col items-end">
-                     <div className="flex items-center gap-1.5">
-                        <Target className="w-3.5 h-3.5 text-blue-500" />
-                        <span className="text-sm font-black text-gray-800 dark:text-gray-100">{stats.pending}</span>
-                     </div>
-                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Pending</span>
-                 </div>
-
-                 <div className="flex flex-col items-end">
-                     <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-orange-500" />
-                        <span className="text-sm font-black text-gray-800 dark:text-gray-100">{stats.locationsCount}</span>
-                     </div>
-                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Places</span>
-                 </div>
-             </div>
-         </div>
-
-         {/* Timeline Slider with Year Labels */}
-         {timelineSteps.length > 0 && (
-             <div className="relative pt-2 pb-5 px-1">
-                 {/* The Slider */}
+                 {/* The Range Input (Invisible Touch Target) */}
                  <input 
                     type="range" 
                     min="0" 
@@ -255,33 +224,48 @@ export const MapView: React.FC<MapViewProps> = ({ items, userLocation, proximity
                     step="1"
                     value={sliderValue}
                     onChange={(e) => setSliderValue(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-600 relative z-20 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
                  />
 
-                 {/* Year Labels / Ticks */}
-                 <div className="absolute left-0 right-0 top-4 flex justify-between px-0.5 pointer-events-none z-10">
-                     {timelineSteps.map((step, idx) => (
-                         <div key={idx} className="flex flex-col items-center justify-center w-8">
-                             {/* Small Tick */}
-                             <div className={`w-0.5 h-1.5 mb-1 transition-colors ${idx === sliderValue ? 'bg-indigo-500 h-2' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                             {/* Label */}
-                             <span className={`text-[9px] font-medium transition-colors whitespace-nowrap ${idx === sliderValue ? 'text-indigo-600 dark:text-indigo-400 font-bold scale-110' : 'text-gray-400 dark:text-gray-500'}`}>
-                                 {step === 'All' ? 'All' : step}
-                             </span>
-                         </div>
-                     ))}
-                 </div>
-                 
-                 {/* Visual Track Dots (Decorative) */}
-                 <div className="absolute left-0 right-0 top-2.5 flex justify-between px-0.5 pointer-events-none z-10">
-                      {timelineSteps.map((_, idx) => (
-                          <div key={idx} className="flex justify-center w-8">
-                            <div className={`w-1 h-1 rounded-full ${idx === sliderValue ? 'bg-transparent' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                          </div>
-                      ))}
+                 {/* The Custom Thumb (Label Embedded) */}
+                 <div 
+                    className="absolute top-1/2 -translate-y-1/2 h-10 min-w-[70px] px-3 bg-red-600 dark:bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xl shadow-red-600/30 z-20 pointer-events-none transition-all duration-150 ease-out transform -translate-x-1/2 border-2 border-white dark:border-gray-800"
+                    style={{ 
+                        left: `${(sliderValue / (timelineSteps.length - 1)) * 100}%` 
+                    }}
+                 >
+                    {currentLabel}
                  </div>
              </div>
          )}
+
+         {/* Stats Row (Bottom) */}
+         <div className="flex justify-between items-center px-2 pt-1 border-t border-gray-100 dark:border-gray-700">
+             <div className="flex items-center gap-6">
+                 <div className="flex flex-col items-center">
+                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Done</span>
+                     <div className="flex items-center gap-1.5">
+                        <Trophy className="w-3.5 h-3.5 text-green-500" />
+                        <span className="text-sm font-black text-gray-800 dark:text-gray-100">{stats.completed}</span>
+                     </div>
+                 </div>
+                 <div className="flex flex-col items-center">
+                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Pending</span>
+                     <div className="flex items-center gap-1.5">
+                        <Target className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-sm font-black text-gray-800 dark:text-gray-100">{stats.pending}</span>
+                     </div>
+                 </div>
+             </div>
+             
+             <div className="flex flex-col items-end">
+                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Places</span>
+                 <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-orange-500" />
+                    <span className="text-sm font-black text-gray-800 dark:text-gray-100">{stats.locationsCount}</span>
+                 </div>
+             </div>
+         </div>
       </div>
     </div>
   );
