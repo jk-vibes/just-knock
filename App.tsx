@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Plus, Radar, Map as MapIcon, Loader, Zap, Settings, Filter, CheckCircle2, Circle, LayoutList, AlignJustify, List, Users, LogOut, Clock, Search, X, ArrowLeft, Trophy, Bell, Tag, ArrowUpDown, CalendarDays, ArrowDownAZ, ArrowUpAZ, Download, Sparkles, History, Target } from 'lucide-react';
 import { BucketListCard } from './components/BucketListCard';
@@ -757,10 +756,10 @@ export default function App() {
     switch (currentTheme) {
         case 'marvel':
             return { 
-                outline: '#1e3a8a', 
-                front: '#dc2626',   
-                back: '#991b1b',    
-                background: '#eff6ff' 
+                outline: '#dc2626', // Red Outline
+                front: '#2563eb',   // Blue Liquid (Completed)
+                back: '#1e40af',    // Darker Blue Liquid
+                background: '#fef2f2' // Light Red Background
             }; 
         case 'batman':
             return { 
@@ -792,9 +791,10 @@ export default function App() {
     switch (currentTheme) {
         case 'marvel':
             return { 
-                completedBg: 'bg-gradient-to-r from-red-600 to-red-800 shadow-inner', 
+                // Blue for completed, Red for pending
+                completedBg: 'bg-gradient-to-r from-blue-600 to-blue-900 shadow-inner', 
                 completedText: 'text-white drop-shadow-sm',
-                dreamingBg: 'bg-gradient-to-r from-blue-700 to-blue-900 shadow-inner',
+                dreamingBg: 'bg-gradient-to-r from-red-600 to-red-800 shadow-inner',
                 dreamingText: 'text-white drop-shadow-sm'
             }; 
         case 'batman':
@@ -955,7 +955,7 @@ export default function App() {
       )}
 
       <header className="flex-none z-30 border-b border-red-100/50 dark:border-gray-800 shadow-sm backdrop-blur-md bg-white/90 dark:bg-gray-900/90 transition-colors duration-300 pt-[env(safe-area-inset-top)]">
-        <div className="max-w-2xl mx-auto px-6 py-2">
+        <div className="max-w-2xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <BucketLogo onClickVersion={() => setIsChangelogOpen(true)} outlineColor="#ef4444" />
@@ -1048,11 +1048,11 @@ export default function App() {
             <>
                 {/* TOOLBAR: List Controls & View Switcher */}
                 <div className="w-full z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
-                    <div className="max-w-2xl mx-auto px-4 py-3">
+                    <div className="max-w-2xl mx-auto px-2 py-1"> {/* Reduced vertical padding py-2 -> py-1 */}
                         
                         {/* Active Filters Row (Tags) */}
                         {(searchQuery || filterCategory || filterInterest) && (
-                            <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1 mb-2">
+                            <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1 mb-1"> {/* Reduced mb-2 -> mb-1 */}
                                 {searchQuery && (
                                     <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-full border border-red-100 dark:border-red-900/30">
                                         <Search className="w-3.5 h-3.5 text-red-500" />
@@ -1098,9 +1098,9 @@ export default function App() {
                             </div>
                         )}
 
-                        <div className="flex items-center justify-between mb-2">
-                            {/* Icon-based View Switcher */}
-                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                        <div className="flex items-center justify-between mb-0 relative h-10"> {/* Reduced mb-1 to mb-0 */}
+                            {/* Left: Icon-based View Switcher */}
+                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl z-10 relative">
                                 <button 
                                     onClick={() => { setActiveTab('list'); triggerHaptic('light'); }}
                                     className={`p-2 rounded-lg transition-all ${activeTab === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
@@ -1117,79 +1117,87 @@ export default function App() {
                                 </button>
                             </div>
 
-                            {/* List Controls */}
-                            {activeTab === 'list' && (
-                                <div className="flex items-center gap-2">
-                                    <button 
-                                        onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }}
-                                        className={`p-2 rounded-lg transition-all ${isCompact ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400'}`}
-                                        title="Compact View"
-                                    >
-                                        <AlignJustify className="w-5 h-5" />
-                                    </button>
-                                    
-                                    <div className="relative">
+                            {/* Center: Family Filter Icon Group */}
+                            {familyMembers.length > 0 && (
+                                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+                                    <div className="flex items-center -space-x-2 hover:space-x-1 transition-all duration-300 p-1 max-w-[200px] overflow-x-hidden">
                                         <button 
-                                            onClick={() => { setIsSortMenuOpen(!isSortMenuOpen); triggerHaptic('light'); }}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isSortMenuOpen ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
+                                            onClick={() => setFilterOwner(null)}
+                                            className={`relative flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-200 ${!filterOwner ? 'border-red-500 bg-red-50 dark:bg-red-900/50 text-red-600 dark:text-red-400 z-20 scale-110 shadow-sm' : 'border-white dark:border-gray-800 bg-gray-100 dark:bg-gray-700 text-gray-400 hover:z-30 hover:scale-110'}`}
+                                            title="All Dreams"
                                         >
-                                            <ArrowUpDown className="w-4 h-4" />
-                                            <span className="hidden sm:inline">Sort</span>
+                                            <Users className="w-4 h-4" />
                                         </button>
-
-                                        {/* Sort Dropdown */}
-                                        {isSortMenuOpen && (
-                                            <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1 w-40 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 z-50">
-                                                <button onClick={() => { setSortBy('newest'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'newest' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                                    <CalendarDays className="w-3.5 h-3.5" /> Newest First
-                                                </button>
-                                                <button onClick={() => { setSortBy('oldest'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'oldest' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                                    <History className="w-3.5 h-3.5" /> Oldest First
-                                                </button>
-                                                <button onClick={() => { setSortBy('az'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'az' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                                    <ArrowDownAZ className="w-3.5 h-3.5" /> Name (A-Z)
-                                                </button>
-                                                <button onClick={() => { setSortBy('za'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'za' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                                    <ArrowUpAZ className="w-3.5 h-3.5" /> Name (Z-A)
-                                                </button>
-                                            </div>
-                                        )}
+                                        <button 
+                                            onClick={() => setFilterOwner('Me')}
+                                            className={`relative flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-200 ${filterOwner === 'Me' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 z-20 scale-110 shadow-sm' : 'border-white dark:border-gray-800 bg-blue-50 dark:bg-blue-900/20 text-blue-400 hover:z-30 hover:scale-110'}`}
+                                            title="My Dreams"
+                                        >
+                                            <span className="text-[10px] font-bold">Me</span>
+                                        </button>
+                                        {familyMembers.map(member => (
+                                            <button 
+                                                key={member}
+                                                onClick={() => setFilterOwner(filterOwner === member ? null : member)}
+                                                className={`relative flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-200 ${filterOwner === member ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 z-20 scale-110 shadow-sm' : 'border-white dark:border-gray-800 bg-purple-50 dark:bg-purple-900/20 text-purple-400 hover:z-30 hover:scale-110'}`}
+                                                title={member}
+                                            >
+                                                <span className="text-[10px] font-bold">{getInitials(member)}</span>
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             )}
+
+                            {/* Right: List Controls */}
+                            <div className="flex items-center gap-2 z-10 relative">
+                                {activeTab === 'list' && (
+                                    <>
+                                        <button 
+                                            onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }}
+                                            className={`p-2 rounded-lg transition-all ${isCompact ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400'}`}
+                                            title="Compact View"
+                                        >
+                                            <AlignJustify className="w-5 h-5" />
+                                        </button>
+                                        
+                                        <div className="relative">
+                                            <button 
+                                                onClick={() => { setIsSortMenuOpen(!isSortMenuOpen); triggerHaptic('light'); }}
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isSortMenuOpen ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
+                                            >
+                                                <ArrowUpDown className="w-4 h-4" />
+                                                <span className="hidden sm:inline">Sort</span>
+                                            </button>
+
+                                            {/* Sort Dropdown */}
+                                            {isSortMenuOpen && (
+                                                <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1 w-40 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 z-50">
+                                                    <button onClick={() => { setSortBy('newest'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'newest' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                        <CalendarDays className="w-3.5 h-3.5" /> Newest First
+                                                    </button>
+                                                    <button onClick={() => { setSortBy('oldest'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'oldest' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                        <History className="w-3.5 h-3.5" /> Oldest First
+                                                    </button>
+                                                    <button onClick={() => { setSortBy('az'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'az' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                        <ArrowDownAZ className="w-3.5 h-3.5" /> Name (A-Z)
+                                                    </button>
+                                                    <button onClick={() => { setSortBy('za'); setIsSortMenuOpen(false); }} className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${sortBy === 'za' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                        <ArrowUpAZ className="w-3.5 h-3.5" /> Name (Z-A)
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Family Member Filter Row */}
-                        {familyMembers.length > 0 && (
-                            <div className="flex items-center gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
-                                <button 
-                                    onClick={() => setFilterOwner(null)}
-                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all shrink-0 ${!filterOwner ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold' : 'border-transparent bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                                >
-                                    All
-                                </button>
-                                {familyMembers.map(member => (
-                                    <button 
-                                        key={member}
-                                        onClick={() => setFilterOwner(filterOwner === member ? null : member)}
-                                        className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all shrink-0 text-xs font-bold ${filterOwner === member ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'border-transparent bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/40'}`}
-                                    >
-                                        {getInitials(member)}
-                                    </button>
-                                ))}
-                                <button 
-                                    onClick={() => setFilterOwner('Me')}
-                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all shrink-0 text-xs font-bold ${filterOwner === 'Me' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'border-transparent bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/40'}`}
-                                >
-                                    Me
-                                </button>
-                            </div>
-                        )}
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto no-scrollbar w-full">
-                    <div className="max-w-2xl mx-auto px-4 py-4 pb-24 h-full">
+                    <div className="max-w-2xl mx-auto px-2 pt-0 pb-24 h-full"> {/* Reduced pt-1 to pt-0 */}
                         {activeTab === 'list' ? (
                             <div className="space-y-3">
                                 {filterStatus === 'completed' ? (
@@ -1305,7 +1313,7 @@ export default function App() {
                 >
                     <LiquidBucket 
                         text="" 
-                        className="w-16 h-16 drop-shadow-2xl" 
+                        className="w-20 h-20 drop-shadow-2xl" 
                         outlineColor={fabTheme.outline}
                         frontColor={fabTheme.front}
                         backColor={fabTheme.back}
@@ -1313,9 +1321,9 @@ export default function App() {
                         fillPercent={progressMeter}
                     />
                     
-                    {/* Plus Icon Overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <Plus className="w-8 h-8 text-white filter drop-shadow-md" strokeWidth={3} />
+                    {/* Plus Icon Badge */}
+                    <div className="absolute top-0 right-0 translate-x-1 -translate-y-1 bg-white dark:bg-gray-800 rounded-full p-1.5 shadow-lg border-2 border-gray-100 dark:border-gray-700 pointer-events-none">
+                        <Plus className="w-6 h-6 text-red-600 dark:text-red-500" strokeWidth={3} />
                     </div>
                 </button>
             </div>

@@ -231,7 +231,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const renderThemeOption = (theme: Theme, label: string, icon: React.ReactNode, colorClass: string) => (
       <button 
         key={theme}
-        onClick={() => onThemeChange(theme)}
+        onClick={() => {
+            onThemeChange(theme);
+            onClose();
+        }}
         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
           currentTheme === theme 
             ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 scale-105' 
